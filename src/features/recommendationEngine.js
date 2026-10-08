@@ -59,12 +59,17 @@ export function getWorkoutSuggestion({ time, focus, energy, history = [] }) {
     intensity = 'high';
   }
 
+  const reason = time <= 20 || energy === 'low'
+    ? `Kort tilgjengelig tid og lav energi betyr at dette blir en lettere, mer kontrollert økt med kroppsvekt og enkel teknikk.`
+    : `Du har nok tid og energi til å bruke en mer struktureret og utfordrende økt med fokus på ${normalizedFocus}.`;
+
   return {
     title: normalizedFocus === 'styrke' ? 'Styrkeøkt' : normalizedFocus === 'kondisjon' ? 'Kondisjonsøkt' : 'Generell treningsøkt',
     exercises: selectedExercises.map((exercise) => formatExerciseLabel(exercise)),
     exerciseDetails: selectedExercises,
     intensity,
     duration: time,
-    notes: 'Basert på tilgjengelig tid, fokus og historikk.'
+    reason,
+    notes: reason
   };
 }

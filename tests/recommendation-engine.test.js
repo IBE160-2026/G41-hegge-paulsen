@@ -119,4 +119,16 @@ describe('Workout recommendation', () => {
 
     expect(result.exercises.some((exercise) => exercise.toLowerCase().includes('armheving') || exercise.toLowerCase().includes('air squat'))).toBe(true);
   });
+
+  it('explains why the recommendation fits the current session', () => {
+    const result = getWorkoutSuggestion({
+      time: 15,
+      focus: 'styrke',
+      energy: 'low',
+      history: []
+    });
+
+    expect(result.reason.toLowerCase()).toContain('kort');
+    expect(result.reason.toLowerCase()).toContain('lav');
+  });
 });

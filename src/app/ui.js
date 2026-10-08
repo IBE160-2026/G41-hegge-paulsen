@@ -65,7 +65,7 @@ function renderSuggestion(data) {
 
   suggestionDuration.textContent = `Varighet: ${data.duration} min`;
   suggestionIntensity.textContent = `Intensitet: ${data.intensity}`;
-  suggestionNotes.textContent = data.notes;
+  suggestionNotes.textContent = data.reason || data.notes;
 }
 
 function renderNextWeight(data) {
