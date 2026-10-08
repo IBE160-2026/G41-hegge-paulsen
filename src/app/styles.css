@@ -1,12 +1,15 @@
 :root {
-  --bg: #f4f7fb;
+  --bg: #edf4ff;
+  --bg-strong: #dfeeff;
   --panel: #ffffff;
-  --primary: #1f6feb;
-  --primary-dark: #174ea6;
-  --text: #1d2b3a;
-  --muted: #5b6b7a;
-  --border: #dfe7f1;
-  --accent: #eaf3ff;
+  --primary: #2463eb;
+  --primary-dark: #1a4fc5;
+  --primary-soft: #e9f1ff;
+  --text: #16263d;
+  --muted: #52657a;
+  --border: #d9e5f5;
+  --success: #1e8f5e;
+  --shadow: 0 16px 40px rgba(36, 99, 235, 0.08);
 }
 
 * {
@@ -15,19 +18,34 @@
 
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: var(--bg);
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(180deg, var(--bg) 0%, #f9fbff 100%);
   color: var(--text);
 }
 
 .container {
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 32px 16px 48px;
+  padding: 40px 18px 56px;
 }
 
 .header {
   margin-bottom: 24px;
+}
+
+.app-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  border: 1px solid #cfe0ff;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
 }
 
 .eyebrow {
@@ -41,21 +59,22 @@ body {
 
 h1 {
   margin: 8px 0 0;
-  font-size: clamp(2rem, 4vw, 3rem);
+  font-size: clamp(2rem, 4vw, 3.1rem);
+  line-height: 1.1;
 }
 
 .card {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 8px 24px rgba(17, 24, 39, 0.04);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: var(--shadow);
 }
 
 #workout-form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
+  gap: 18px;
   align-items: end;
 }
 
@@ -68,30 +87,49 @@ h1 {
 label {
   font-weight: 700;
   color: var(--muted);
+  font-size: 0.95rem;
 }
 
-select, button {
-  border-radius: 10px;
+select,
+input,
+button {
+  border-radius: 12px;
   border: 1px solid var(--border);
   padding: 12px 14px;
   font-size: 1rem;
+  font-family: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-select {
-  background: white;
+select,
+input {
+  background: #fff;
+  color: var(--text);
+}
+
+select:focus,
+input:focus {
+  outline: none;
+  border-color: #8bb5ff;
+  box-shadow: 0 0 0 4px rgba(36, 99, 235, 0.12);
 }
 
 button {
-  background: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
   border: none;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s ease;
+  box-shadow: 0 10px 20px rgba(36, 99, 235, 0.18);
 }
 
 button:hover {
-  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 20px rgba(36, 99, 235, 0.22);
+}
+
+button:active {
+  transform: translateY(0);
 }
 
 .result-grid {
@@ -101,8 +139,15 @@ button:hover {
   margin-top: 24px;
 }
 
-.result-card h2 {
+.result-card {
+  min-height: 220px;
+}
+
+.result-card h2,
+.log-card h2 {
   margin-top: 0;
+  margin-bottom: 14px;
+  font-size: 1.25rem;
 }
 
 .log-card {
@@ -116,28 +161,51 @@ button:hover {
   align-items: end;
 }
 
-input {
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  padding: 12px 14px;
-  font-size: 1rem;
-  background: white;
-}
-
 .big-text {
-  font-size: clamp(1.5rem, 2.3vw, 2.2rem);
-  font-weight: 700;
+  font-size: clamp(1.6rem, 2.5vw, 2.3rem);
+  font-weight: 800;
   margin: 0 0 12px;
-}
-
-.exercise-list {
-  margin: 12px 0;
-  padding-left: 18px;
   color: var(--text);
 }
 
-.meta, .notes {
+.exercise-list {
+  margin: 14px 0 16px;
+  padding-left: 18px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.meta,
+.notes {
   margin: 8px 0;
   color: var(--muted);
-  line-height: 1.5;
+  line-height: 1.6;
+}
+
+.notes {
+  color: var(--muted);
+}
+
+#progress-trend {
+  background: var(--primary-soft);
+  border: 1px solid #d7e7ff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--primary-dark);
+  margin: 16px 0;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding-top: 24px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  button {
+    width: 100%;
+  }
 }
