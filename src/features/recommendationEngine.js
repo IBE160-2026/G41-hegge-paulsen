@@ -1,4 +1,4 @@
-import { exerciseData } from '../data/exerciseData.js';
+import { exerciseData } from '../data/exerciseCatalog.js';
 
 export function getWorkoutSuggestion({ time, focus, energy, history = [] }) {
   const availableExercises = exerciseData.filter((exercise) => {

@@ -1,12 +1,12 @@
-import { getWorkoutSuggestion } from '../features/workoutRecommendation.js';
-import { suggestNextWeight } from '../features/nextWeightSuggestion.js';
+import { getWorkoutSuggestion } from '../features/recommendationEngine.js';
+import { suggestNextWeight } from '../features/weightProgression.js';
 import {
   getProgressSummary,
   logWorkout,
   readStoredHistory,
   writeStoredHistory
-} from '../features/workoutLog.js';
-import { userHistory } from '../data/userHistory.js';
+} from '../features/trainingLog.js';
+import { userHistory } from '../data/sampleHistory.js';
 
 const form = document.getElementById('workout-form');
 const suggestionTitle = document.getElementById('suggestion-title');
@@ -19,6 +19,7 @@ const nextWeightMessage = document.getElementById('next-weight-message');
 const progressTotal = document.getElementById('progress-total');
 const progressAverage = document.getElementById('progress-average');
 const progressFocus = document.getElementById('progress-focus');
+const progressTrend = document.getElementById('progress-trend');
 const progressList = document.getElementById('progress-list');
 const logForm = document.getElementById('workout-log-form');
 
@@ -50,6 +51,7 @@ function renderProgress(history) {
   progressTotal.textContent = String(summary.totalSessions);
   progressAverage.textContent = `${summary.averageLoad} kg`;
   progressFocus.textContent = summary.lastFocus === 'Ingen' ? 'Ingen' : summary.lastFocus;
+  progressTrend.textContent = summary.trendMessage;
 
   if (!summary.recentSessions.length) {
     progressList.innerHTML = '<li>Ingen treninger logget enda.</li>';

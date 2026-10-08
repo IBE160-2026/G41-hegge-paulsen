@@ -1,6 +1,6 @@
-import { getWorkoutSuggestion } from '../features/workoutRecommendation.js';
-import { suggestNextWeight } from '../features/nextWeightSuggestion.js';
-import { userHistory } from '../data/userHistory.js';
+import { getWorkoutSuggestion } from '../features/recommendationEngine.js';
+import { suggestNextWeight } from '../features/weightProgression.js';
+import { userHistory } from '../data/sampleHistory.js';
 
 const app = {
   state: {

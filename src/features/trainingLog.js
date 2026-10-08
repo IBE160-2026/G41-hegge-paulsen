@@ -34,20 +34,43 @@ export function getProgressSummary(history = []) {
       averageLoad: 0,
       lastFocus: 'Ingen',
       lastLoad: 0,
-      recentSessions: []
+      recentSessions: [],
+      trendMessage: 'Logg minst to økter for å se utvikling.'
     };
   }
 
   const totalSessions = safeHistory.length;
   const averageLoad = safeHistory.reduce((sum, entry) => sum + Number(entry.load || 0), 0) / totalSessions;
   const lastWorkout = safeHistory[safeHistory.length - 1];
+  const recentSessions = [...safeHistory].slice(-3);
+  const recentAverage = recentSessions.reduce((sum, entry) => sum + Number(entry.load || 0), 0) / recentSessions.length;
+  const olderSessions = safeHistory.length > 3 ? safeHistory.slice(0, -3) : [];
+  const olderAverage = olderSessions.length
+    ? olderSessions.reduce((sum, entry) => sum + Number(entry.load || 0), 0) / olderSessions.length
+    : recentAverage;
+
+  let trendMessage = 'Logg minst to økter for å se utvikling.';
+
+  if (safeHistory.length >= 2) {
+    const delta = recentAverage - olderAverage;
+    const percentage = olderAverage ? (delta / olderAverage) * 100 : 0;
+
+    if (delta > 0) {
+      trendMessage = `Du har økt belastningen med ${Math.abs(percentage).toFixed(0)}% de siste øktene.`;
+    } else if (delta < 0) {
+      trendMessage = `Belastningen er ned ${Math.abs(percentage).toFixed(0)}% de siste øktene.`;
+    } else {
+      trendMessage = 'Belastningen er stabil de siste øktene.';
+    }
+  }
 
   return {
     totalSessions,
     averageLoad: Number(averageLoad.toFixed(1)),
     lastFocus: lastWorkout.focus || 'ukjent',
     lastLoad: Number(lastWorkout.load || 0),
-    recentSessions: [...safeHistory].slice(-3).reverse()
+    recentSessions: [...safeHistory].slice(-3).reverse(),
+    trendMessage
   };
 }
 
