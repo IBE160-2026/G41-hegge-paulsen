@@ -186,6 +186,16 @@ button:active {
   color: var(--muted);
 }
 
+#latest-workout {
+  background: var(--primary-soft);
+  border: 1px solid #d7e7ff;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--primary-dark);
+  margin: 12px 0 16px;
+  font-weight: 600;
+}
+
 #progress-trend {
   background: var(--primary-soft);
   border: 1px solid #d7e7ff;

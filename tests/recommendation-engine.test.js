@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getWorkoutSuggestion } from '../src/features/recommendationEngine.js';
 import { suggestNextWeight } from '../src/features/weightProgression.js';
-import { logWorkout, getProgressSummary } from '../src/features/trainingLog.js';
+import { logWorkout, getProgressSummary, getLatestWorkoutSummary } from '../src/features/trainingLog.js';
 
 describe('Workout recommendation', () => {
   it('returns strength workout for short strength session', () => {
@@ -84,5 +84,16 @@ describe('Workout recommendation', () => {
 
     expect(result.trendMessage).toContain('økt');
     expect(result.trendMessage.length).toBeGreaterThan(10);
+  });
+
+  it('returns a clear summary for the latest logged workout', () => {
+    const result = getLatestWorkoutSummary([
+      { date: '2026-09-28', focus: 'styrke', load: 70, duration: 30 },
+      { date: '2026-10-04', focus: 'kondisjon', load: 90, duration: 45 }
+    ]);
+
+    expect(result.focus).toBe('kondisjon');
+    expect(result.load).toBe(90);
+    expect(result.label).toContain('2026-10-04');
   });
 });

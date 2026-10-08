@@ -25,6 +25,30 @@ export function logWorkout(history = [], workout = {}) {
   return [...safeHistory, { ...nextEntry, id: nextId }];
 }
 
+export function getLatestWorkoutSummary(history = []) {
+  const safeHistory = normalizeHistory(history);
+
+  if (!safeHistory.length) {
+    return {
+      label: 'Ingen økter logget enda',
+      focus: 'Ingen',
+      load: 0,
+      duration: 0,
+      date: null
+    };
+  }
+
+  const latestWorkout = [...safeHistory].slice(-1)[0];
+
+  return {
+    label: `Siste økt: ${latestWorkout.date || 'Ukjent dato'}`,
+    focus: latestWorkout.focus || 'ukjent',
+    load: Number(latestWorkout.load || 0),
+    duration: Number(latestWorkout.duration || 0),
+    date: latestWorkout.date || null
+  };
+}
+
 export function getProgressSummary(history = []) {
   const safeHistory = normalizeHistory(history);
 

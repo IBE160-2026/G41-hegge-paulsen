@@ -1,6 +1,7 @@
 import { getWorkoutSuggestion } from '../features/recommendationEngine.js';
 import { suggestNextWeight } from '../features/weightProgression.js';
 import {
+  getLatestWorkoutSummary,
   getProgressSummary,
   logWorkout,
   readStoredHistory,
@@ -19,6 +20,7 @@ const nextWeightMessage = document.getElementById('next-weight-message');
 const progressTotal = document.getElementById('progress-total');
 const progressAverage = document.getElementById('progress-average');
 const progressFocus = document.getElementById('progress-focus');
+const latestWorkout = document.getElementById('latest-workout');
 const progressTrend = document.getElementById('progress-trend');
 const progressList = document.getElementById('progress-list');
 const logForm = document.getElementById('workout-log-form');
@@ -47,10 +49,14 @@ function renderNextWeight(data) {
 
 function renderProgress(history) {
   const summary = getProgressSummary(history);
+  const latestSummary = getLatestWorkoutSummary(history);
 
   progressTotal.textContent = String(summary.totalSessions);
   progressAverage.textContent = `${summary.averageLoad} kg`;
   progressFocus.textContent = summary.lastFocus === 'Ingen' ? 'Ingen' : summary.lastFocus;
+  latestWorkout.textContent = latestSummary.date
+    ? `${latestSummary.label} • ${latestSummary.focus} • ${latestSummary.load} kg`
+    : latestSummary.label;
   progressTrend.textContent = summary.trendMessage;
 
   if (!summary.recentSessions.length) {
