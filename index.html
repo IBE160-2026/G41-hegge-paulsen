@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="no">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartØkt</title>
+    <link rel="stylesheet" href="./src/app/styles.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <p class="eyebrow">SmartØkt</p>
+        <h1>Treningsøkt tilpasset deg</h1>
+      </header>
+
+      <section class="card">
+        <form id="workout-form">
+          <div class="field-group">
+            <label for="time">Tilgjengelig tid</label>
+            <select id="time" name="time">
+              <option value="15">15 min</option>
+              <option value="20">20 min</option>
+              <option value="30" selected>30 min</option>
+              <option value="40">40 min</option>
+              <option value="45">45 min</option>
+              <option value="60">60 min</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="focus">Fokus</label>
+            <select id="focus" name="focus">
+              <option value="styrke" selected>Styrke</option>
+              <option value="kondisjon">Kondisjon</option>
+              <option value="generell">Generell helse</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="energy">Energinivå</label>
+            <select id="energy" name="energy">
+              <option value="low">Lav</option>
+              <option value="medium" selected>Middels</option>
+              <option value="high">Høy</option>
+            </select>
+          </div>
+
+          <button type="submit">Få øktforslag</button>
+        </form>
+      </section>
+
+      <section class="result-grid">
+        <article class="card result-card">
+          <h2>Øktforslag</h2>
+          <p id="suggestion-title" class="big-text">Laster...</p>
+          <ul id="suggestion-exercises" class="exercise-list"></ul>
+          <p id="suggestion-duration" class="meta"></p>
+          <p id="suggestion-intensity" class="meta"></p>
+          <p id="suggestion-notes" class="notes"></p>
+        </article>
+
+        <article class="card result-card">
+          <h2>Neste vekt</h2>
+          <p id="next-weight" class="big-text">Laster...</p>
+          <p id="next-weight-message" class="notes"></p>
+        </article>
+      </section>
+    </main>
+
+    <script type="module" src="./src/app/ui.js"></script>
+  </body>
+</html>
