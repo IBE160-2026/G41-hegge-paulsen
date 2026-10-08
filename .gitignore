@@ -49,6 +49,7 @@ playwright-report/
 _bmad/config.user.toml
 _bmad/custom/*.user.toml
 _bmad/render/
+.claude/
 .claude/settings.local.json
 
 # Operating system / editors
