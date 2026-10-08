@@ -105,6 +105,25 @@ button:hover {
   margin-top: 0;
 }
 
+.log-card {
+  margin-top: 24px;
+}
+
+.log-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  align-items: end;
+}
+
+input {
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  font-size: 1rem;
+  background: white;
+}
+
 .big-text {
   font-size: clamp(1.5rem, 2.3vw, 2.2rem);
   font-weight: 700;

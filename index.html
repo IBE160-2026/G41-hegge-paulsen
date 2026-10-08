@@ -64,6 +64,54 @@
           <p id="next-weight" class="big-text">Laster...</p>
           <p id="next-weight-message" class="notes"></p>
         </article>
+
+        <article class="card result-card">
+          <h2>Treningsstatus</h2>
+          <p class="meta">Økter totalt: <strong id="progress-total">0</strong></p>
+          <p class="meta">Gjennomsnittlig belastning: <strong id="progress-average">0 kg</strong></p>
+          <p class="meta">Siste fokus: <strong id="progress-focus">Ingen</strong></p>
+          <ul id="progress-list" class="exercise-list"></ul>
+        </article>
+      </section>
+
+      <section class="card log-card">
+        <h2>Logg økt</h2>
+        <form id="workout-log-form" class="log-form">
+          <div class="field-group">
+            <label for="log-date">Dato</label>
+            <input id="log-date" name="log-date" type="date" />
+          </div>
+
+          <div class="field-group">
+            <label for="log-focus">Fokus</label>
+            <select id="log-focus" name="log-focus">
+              <option value="styrke">Styrke</option>
+              <option value="kondisjon">Kondisjon</option>
+              <option value="generell">Generell helse</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="log-duration">Varighet</label>
+            <input id="log-duration" name="log-duration" type="number" min="10" max="120" value="30" />
+          </div>
+
+          <div class="field-group">
+            <label for="log-load">Belastning (kg)</label>
+            <input id="log-load" name="log-load" type="number" min="0" step="5" value="80" />
+          </div>
+
+          <div class="field-group">
+            <label for="log-performance">Opplevelse</label>
+            <select id="log-performance" name="log-performance">
+              <option value="good">Bra</option>
+              <option value="fair">Middels</option>
+              <option value="easy">Lett</option>
+            </select>
+          </div>
+
+          <button type="submit">Legg til økt</button>
+        </form>
       </section>
     </main>
 
