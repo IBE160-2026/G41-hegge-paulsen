@@ -34,9 +34,35 @@ if (!workoutHistory.length) {
 
 function renderSuggestion(data) {
   suggestionTitle.textContent = data.title;
-  suggestionExercises.innerHTML = data.exercises
-    .map((exercise) => `<li>${exercise}</li>`)
+
+  const exerciseDetails = data.exerciseDetails && data.exerciseDetails.length
+    ? data.exerciseDetails
+    : data.exercises.map((exerciseName) => ({
+        name: { no: exerciseName, en: exerciseName },
+        instructions: { no: 'Se mer om øvelsen i treningskatalogen.', en: 'See more about the exercise in the training catalog.' },
+        videoUrl: ''
+      }));
+
+  suggestionExercises.innerHTML = exerciseDetails
+    .map((exercise) => {
+      const label = exercise.name && exercise.name.no && exercise.name.en
+        ? `${exercise.name.no} (${exercise.name.en})`
+        : exercise;
+      const instruction = exercise.instructions?.no || exercise.description?.no || '';
+      const videoLink = exercise.videoUrl
+        ? `<a href="${exercise.videoUrl}" target="_blank" rel="noreferrer">Se video</a>`
+        : '';
+
+      return `
+        <li>
+          <strong>${label}</strong>
+          ${instruction ? `<div>${instruction}</div>` : ''}
+          ${videoLink ? `<div class="exercise-link">${videoLink}</div>` : ''}
+        </li>
+      `;
+    })
     .join('');
+
   suggestionDuration.textContent = `Varighet: ${data.duration} min`;
   suggestionIntensity.textContent = `Intensitet: ${data.intensity}`;
   suggestionNotes.textContent = data.notes;

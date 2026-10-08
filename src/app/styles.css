@@ -175,6 +175,35 @@ button:active {
   line-height: 1.6;
 }
 
+.exercise-list li {
+  margin-bottom: 12px;
+}
+
+.exercise-list strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.exercise-list div {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.exercise-link {
+  margin-top: 6px;
+}
+
+.exercise-link a {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.exercise-link a:hover {
+  text-decoration: underline;
+}
+
 .meta,
 .notes {
   margin: 8px 0;

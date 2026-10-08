@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { getWorkoutSuggestion } from '../src/features/recommendationEngine.js';
 import { suggestNextWeight } from '../src/features/weightProgression.js';
 import { logWorkout, getProgressSummary, getLatestWorkoutSummary } from '../src/features/trainingLog.js';
+import { exerciseData } from '../src/data/exerciseCatalog.js';
 
 describe('Workout recommendation', () => {
   it('returns strength workout for short strength session', () => {
@@ -95,5 +96,16 @@ describe('Workout recommendation', () => {
     expect(result.focus).toBe('kondisjon');
     expect(result.load).toBe(90);
     expect(result.label).toContain('2026-10-04');
+  });
+
+  it('includes bilingual bodyweight exercises with guidance and video links', () => {
+    const squat = exerciseData.find((exercise) => exercise.id === 'squat');
+    const pushUp = exerciseData.find((exercise) => exercise.id === 'push-up');
+
+    expect(squat.name.no).toBe('Knebøy');
+    expect(squat.name.en).toBe('Squat');
+    expect(squat.videoUrl).toContain('youtube.com');
+    expect(pushUp).toBeTruthy();
+    expect(pushUp.name.no).toBe('Armheving');
   });
 });

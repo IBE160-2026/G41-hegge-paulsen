@@ -1,20 +1,30 @@
 import { exerciseData } from '../data/exerciseCatalog.js';
 
+function formatExerciseLabel(exercise) {
+  return `${exercise.name.no} (${exercise.name.en})`;
+}
+
 export function getWorkoutSuggestion({ time, focus, energy, history = [] }) {
+  const normalizedFocus = focus || 'generell';
+
   const availableExercises = exerciseData.filter((exercise) => {
-    if (focus === 'styrke') {
-      return exercise.category === 'strength';
+    if (normalizedFocus === 'styrke') {
+      return exercise.focus === 'styrke';
     }
-    if (focus === 'kondisjon') {
-      return exercise.category === 'conditioning';
+    if (normalizedFocus === 'kondisjon') {
+      return exercise.focus === 'kondisjon';
     }
-    return true;
+    if (normalizedFocus === 'generell') {
+      return exercise.focus === 'generell' || exercise.focus === 'styrke' || exercise.focus === 'kondisjon';
+    }
+    return exercise.focus === normalizedFocus;
   });
 
   if (!availableExercises.length) {
     return {
       title: 'Ingen passende øvelser funnet',
       exercises: [],
+      exerciseDetails: [],
       intensity: 'low'
     };
   }
@@ -37,8 +47,9 @@ export function getWorkoutSuggestion({ time, focus, energy, history = [] }) {
   }
 
   return {
-    title: focus === 'styrke' ? 'Styrkeøkt' : focus === 'kondisjon' ? 'Kondisjonsøkt' : 'Generell treningsøkt',
-    exercises: selectedExercises.map((exercise) => exercise.name),
+    title: normalizedFocus === 'styrke' ? 'Styrkeøkt' : normalizedFocus === 'kondisjon' ? 'Kondisjonsøkt' : 'Generell treningsøkt',
+    exercises: selectedExercises.map((exercise) => formatExerciseLabel(exercise)),
+    exerciseDetails: selectedExercises,
     intensity,
     duration: time,
     notes: 'Basert på tilgjengelig tid, fokus og historikk.'
