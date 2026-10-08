@@ -108,4 +108,15 @@ describe('Workout recommendation', () => {
     expect(pushUp).toBeTruthy();
     expect(pushUp.name.no).toBe('Armheving');
   });
+
+  it('prefers bodyweight strength moves for short and low-energy sessions', () => {
+    const result = getWorkoutSuggestion({
+      time: 15,
+      focus: 'styrke',
+      energy: 'low',
+      history: []
+    });
+
+    expect(result.exercises.some((exercise) => exercise.toLowerCase().includes('armheving') || exercise.toLowerCase().includes('air squat'))).toBe(true);
+  });
 });

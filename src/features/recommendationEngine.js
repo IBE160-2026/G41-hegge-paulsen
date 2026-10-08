@@ -29,7 +29,20 @@ export function getWorkoutSuggestion({ time, focus, energy, history = [] }) {
     };
   }
 
-  const selectedExercises = availableExercises.slice(0, 3);
+  let prioritizedExercises = [...availableExercises];
+
+  if (normalizedFocus === 'styrke' && (time <= 20 || energy === 'low')) {
+    const bodyweightExercises = availableExercises.filter((exercise) => exercise.category === 'bodyweight');
+    const equipmentExercises = availableExercises.filter((exercise) => exercise.category !== 'bodyweight');
+    prioritizedExercises = [...bodyweightExercises, ...equipmentExercises];
+  }
+
+  if (normalizedFocus === 'kondisjon' && (time <= 20 || energy === 'low')) {
+    const easierExercises = availableExercises.filter((exercise) => exercise.difficulty !== 'hard');
+    prioritizedExercises = [...easierExercises, ...availableExercises.filter((exercise) => exercise.difficulty === 'hard')];
+  }
+
+  const selectedExercises = prioritizedExercises.slice(0, 3);
 
   let intensity = 'medium';
   if (energy === 'low') intensity = 'low';
