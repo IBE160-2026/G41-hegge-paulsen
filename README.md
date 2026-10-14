@@ -59,6 +59,7 @@ npm test
 
 ## Dokumentasjon
 - [docs/README.md](docs/README.md) – struktur og mapper
+- [docs/exercise-sources.md](docs/exercise-sources.md) – kilder og kildeverifisering for øvelseskatalogen
 - [error/README.md](error/README.md) – dokumentasjon av feil og løsninger
 - [_bmad-output/planning-artifacts]( _bmad-output/planning-artifacts ) – planlegging og MVP-artefakter
 

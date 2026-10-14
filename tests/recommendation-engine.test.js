@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { getWorkoutSuggestion } from '../src/features/recommendationEngine.js';
 import { suggestNextWeight } from '../src/features/weightProgression.js';
 import { logWorkout, getProgressSummary, getLatestWorkoutSummary } from '../src/features/trainingLog.js';
-import { exerciseData } from '../src/data/exerciseCatalog.js';
+import { exerciseData, exerciseSources } from '../src/data/exerciseCatalog.js';
+import { readUserProfile, writeUserProfile } from '../src/features/userProfile.js';
 
 describe('Workout recommendation', () => {
   it('returns strength workout for short strength session', () => {
@@ -109,6 +110,22 @@ describe('Workout recommendation', () => {
     expect(pushUp.name.no).toBe('Armheving');
   });
 
+  it('exposes a lightweight animation type for each exercise demo', () => {
+    const squat = exerciseData.find((exercise) => exercise.id === 'squat');
+    const pushUp = exerciseData.find((exercise) => exercise.id === 'push-up');
+
+    expect(squat.animation).toBe('squat');
+    expect(pushUp.animation).toBe('push-up');
+  });
+
+  it('lists the main muscles engaged in each exercise', () => {
+    const squat = exerciseData.find((exercise) => exercise.id === 'squat');
+    const pushUp = exerciseData.find((exercise) => exercise.id === 'push-up');
+
+    expect(squat.muscles).toContain('Ben');
+    expect(pushUp.muscles).toContain('Bryst');
+  });
+
   it('prefers bodyweight strength moves for short and low-energy sessions', () => {
     const result = getWorkoutSuggestion({
       time: 15,
@@ -130,5 +147,151 @@ describe('Workout recommendation', () => {
 
     expect(result.reason.toLowerCase()).toContain('kort');
     expect(result.reason.toLowerCase()).toContain('lav');
+  });
+
+  it('builds a realistic strength plan and a single-branch conditioning plan', () => {
+    const strengthResult = getWorkoutSuggestion({
+      time: 45,
+      focus: 'styrke',
+      energy: 'medium',
+      history: []
+    });
+
+    const conditioningResult = getWorkoutSuggestion({
+      time: 30,
+      focus: 'kondisjon',
+      energy: 'medium',
+      history: []
+    });
+
+    expect(strengthResult.exercises.length).toBeGreaterThanOrEqual(4);
+    expect(strengthResult.exercises.length).toBeLessThanOrEqual(10);
+    expect(strengthResult.exerciseDetails[0].sets).toBeGreaterThan(0);
+    expect(strengthResult.exerciseDetails[0].reps).toBeGreaterThan(0);
+    expect(strengthResult.exerciseDetails[0].restSeconds).toBeGreaterThan(0);
+    expect(conditioningResult.exercises.length).toBeLessThanOrEqual(2);
+  });
+
+  it('matches strength exercises to home equipment and beginner level without repeating movement patterns', () => {
+    const result = getWorkoutSuggestion({
+      time: 60,
+      focus: 'styrke',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-dumbbell',
+      level: 'beginner'
+    });
+
+    expect(result.exerciseDetails.length).toBeGreaterThanOrEqual(4);
+    expect(result.exerciseDetails.every((exercise) => exercise.trainingModes.includes('home-dumbbell'))).toBe(true);
+    expect(result.exerciseDetails.every((exercise) => exercise.level === 'beginner')).toBe(true);
+    expect(result.exerciseDetails.every((exercise) => !exercise.equipment.includes('kettlebell'))).toBe(true);
+    expect(new Set(result.exerciseDetails.map((exercise) => exercise.movementPattern)).size).toBe(result.exerciseDetails.length);
+  });
+
+  it('does not recommend weights in the bodyweight-only home profile', () => {
+    const result = getWorkoutSuggestion({
+      time: 45,
+      focus: 'styrke',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'beginner'
+    });
+
+    expect(result.exerciseDetails.length).toBeGreaterThanOrEqual(4);
+    expect(result.exerciseDetails.every((exercise) => exercise.equipment.every((item) => item === 'bodyweight'))).toBe(true);
+    expect(result.exerciseDetails.find((exercise) => exercise.movementPattern === 'core').holdSeconds).toBeGreaterThan(0);
+  });
+
+  it('uses timed work and rest intervals for beginner home conditioning', () => {
+    const result = getWorkoutSuggestion({
+      time: 30,
+      focus: 'kondisjon',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'beginner'
+    });
+
+    expect(result.exerciseDetails[0].rounds).toBeGreaterThan(0);
+    expect(result.exerciseDetails[0].workSeconds).toBeGreaterThan(0);
+    expect(result.exerciseDetails[0].restSeconds).toBeGreaterThan(0);
+  });
+
+  it('offers barbell, dumbbell, kettlebell, bodyweight, and machine squat alternatives', () => {
+    const squatOptions = exerciseData.filter((exercise) => exercise.movementPattern === 'squat');
+    const equipmentOptions = new Set(squatOptions.flatMap((exercise) => exercise.equipment));
+
+    expect(equipmentOptions).toEqual(new Set(['bodyweight', 'barbell', 'dumbbell', 'kettlebell', 'machine']));
+  });
+
+  it('uses gym equipment for experienced gym recommendations', () => {
+    const result = getWorkoutSuggestion({
+      time: 45,
+      focus: 'styrke',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'gym',
+      level: 'advanced'
+    });
+
+    expect(result.exerciseDetails.some((exercise) => exercise.equipment.includes('barbell'))).toBe(true);
+    expect(result.exerciseDetails.every((exercise) => exercise.trainingModes.includes('gym'))).toBe(true);
+  });
+
+  it('links exercise-specific instructions to verified sources and marks remaining entries for review', () => {
+    const miniSquat = exerciseData.find((exercise) => exercise.id === 'air-squat');
+    const wallPushUp = exerciseData.find((exercise) => exercise.id === 'wall-push-up');
+    const barbellSquat = exerciseData.find((exercise) => exercise.id === 'barbell-squat');
+
+    expect(miniSquat.sourceIds).toContain('nhs-strength-exercises');
+    expect(wallPushUp.sourceIds).toContain('nhs-strength-exercises');
+    expect(exerciseSources['nhs-strength-exercises'].url).toContain('nhs.uk');
+    expect(barbellSquat.sourceIds).toEqual([]);
+    expect(barbellSquat.sourceStatus).toBe('needs-review');
+  });
+
+  it('filters custom-profile recommendations to equipment saved in the user profile', () => {
+    const result = getWorkoutSuggestion({
+      time: 60,
+      focus: 'styrke',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'custom',
+      level: 'beginner',
+      availableEquipment: ['bodyweight', 'kettlebell']
+    });
+
+    expect(result.exerciseDetails.length).toBeGreaterThanOrEqual(4);
+    expect(result.exerciseDetails.every((exercise) => (
+      exercise.equipment.every((item) => ['bodyweight', 'kettlebell'].includes(item))
+    ))).toBe(true);
+    expect(result.exerciseDetails.some((exercise) => exercise.id === 'kettlebell-deadlift')).toBe(true);
+  });
+
+  it('persists the selected equipment list in the user profile', () => {
+    const values = new Map();
+    const storage = {
+      getItem: (key) => values.get(key) || null,
+      setItem: (key, value) => values.set(key, value)
+    };
+
+    writeUserProfile({ equipment: ['kettlebell', 'kettlebell', 'unknown'] }, storage);
+
+    expect(readUserProfile(storage)).toEqual({ equipment: ['kettlebell'] });
+  });
+
+  it('asks the user to select equipment when a custom profile is empty', () => {
+    const result = getWorkoutSuggestion({
+      time: 30,
+      focus: 'styrke',
+      energy: 'medium',
+      trainingMode: 'custom',
+      availableEquipment: []
+    });
+
+    expect(result.exerciseDetails).toEqual([]);
+    expect(result.reason).toContain('Velg minst ett');
   });
 });

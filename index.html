@@ -14,7 +14,7 @@
         <h1>Treningsøkt tilpasset deg</h1>
       </header>
 
-      <section class="card">
+      <section id="workout-config" class="card">
         <form id="workout-form">
           <div class="field-group">
             <label for="time">Tilgjengelig tid</label>
@@ -46,11 +46,36 @@
             </select>
           </div>
 
+          <div class="field-group">
+            <label for="training-mode">Treningsoppsett</label>
+            <select id="training-mode" name="trainingMode">
+              <option value="home-bodyweight">Hjemme / kroppsvekt</option>
+              <option value="home-dumbbell" selected>Hjemme / manualer</option>
+              <option value="home-kettlebell">Hjemme / kettlebell</option>
+              <option value="gym">Senter / tyngre utstyr</option>
+              <option value="custom">Egendefinert fra profil</option>
+            </select>
+          </div>
+
+          <fieldset id="custom-equipment-panel" class="field-group equipment-profile" hidden>
+            <legend>Tilgjengelig utstyr i profilen</legend>
+            <div id="profile-equipment-options" class="equipment-options"></div>
+          </fieldset>
+
+          <div class="field-group">
+            <label for="level">Treningsnivå</label>
+            <select id="level" name="level">
+              <option value="beginner">Nybegynner</option>
+              <option value="intermediate" selected>Middels erfaring</option>
+              <option value="advanced">Erfaren</option>
+            </select>
+          </div>
+
           <button type="submit">Få øktforslag</button>
         </form>
       </section>
 
-      <section class="result-grid">
+      <section id="results" class="result-grid">
         <article class="card result-card">
           <h2>Øktforslag</h2>
           <p id="suggestion-title" class="big-text">Laster...</p>
@@ -77,7 +102,7 @@
         </article>
       </section>
 
-      <section class="card log-card">
+      <section id="log-section" class="card log-card">
         <h2>Logg økt</h2>
         <form id="workout-log-form" class="log-form">
           <div class="field-group">

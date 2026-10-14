@@ -1,4 +1,6 @@
 import { getWorkoutSuggestion } from '../features/recommendationEngine.js';
+import { exerciseSources } from '../data/exerciseCatalog.js';
+import { profileEquipmentOptions, readUserProfile, writeUserProfile } from '../features/userProfile.js';
 import { suggestNextWeight } from '../features/weightProgression.js';
 import {
   getLatestWorkoutSummary,
@@ -24,12 +26,50 @@ const latestWorkout = document.getElementById('latest-workout');
 const progressTrend = document.getElementById('progress-trend');
 const progressList = document.getElementById('progress-list');
 const logForm = document.getElementById('workout-log-form');
+const trainingModeSelect = document.getElementById('training-mode');
+const customEquipmentPanel = document.getElementById('custom-equipment-panel');
+const profileEquipmentOptionsContainer = document.getElementById('profile-equipment-options');
 
 let workoutHistory = readStoredHistory();
+let userProfile = readUserProfile();
+
+function renderEquipmentOptions(container, inputName, selectedEquipment) {
+  container.innerHTML = profileEquipmentOptions
+    .map((option) => `
+      <label class="equipment-option">
+        <input type="checkbox" name="${inputName}" value="${option.id}" ${selectedEquipment.includes(option.id) ? 'checked' : ''} />
+        <span>${option.label}</span>
+      </label>
+    `)
+    .join('');
+}
+
+renderEquipmentOptions(profileEquipmentOptionsContainer, 'profile-equipment', userProfile.equipment);
+
+function updateCustomEquipmentVisibility() {
+  customEquipmentPanel.hidden = trainingModeSelect.value !== 'custom';
+}
+
+trainingModeSelect.addEventListener('change', updateCustomEquipmentVisibility);
+updateCustomEquipmentVisibility();
 
 if (!workoutHistory.length) {
   workoutHistory = [...userHistory];
   writeStoredHistory(workoutHistory);
+}
+
+function renderExerciseDemo(exercise) {
+  const animationType = exercise.animation || 'generic';
+  return `
+    <div class="exercise-demo ${animationType}" aria-hidden="true">
+      <div class="demo-head"></div>
+      <div class="demo-body"></div>
+      <div class="demo-arm left"></div>
+      <div class="demo-arm right"></div>
+      <div class="demo-leg left"></div>
+      <div class="demo-leg right"></div>
+    </div>
+  `;
 }
 
 function renderSuggestion(data) {
@@ -40,7 +80,9 @@ function renderSuggestion(data) {
     : data.exercises.map((exerciseName) => ({
         name: { no: exerciseName, en: exerciseName },
         instructions: { no: 'Se mer om øvelsen i treningskatalogen.', en: 'See more about the exercise in the training catalog.' },
-        videoUrl: ''
+        videoUrl: '',
+        animation: 'generic',
+        muscles: ['Generell styrke']
       }));
 
   suggestionExercises.innerHTML = exerciseDetails
@@ -49,15 +91,49 @@ function renderSuggestion(data) {
         ? `${exercise.name.no} (${exercise.name.en})`
         : exercise;
       const instruction = exercise.instructions?.no || exercise.description?.no || '';
+      const muscleTags = (exercise.muscles || []).map((muscle) => `<span class="muscle-tag">${muscle}</span>`).join('');
+      const planInfo = exercise.holdSeconds
+        ? `${exercise.sets} x ${exercise.holdSeconds} sek hold • ${exercise.restSeconds} sek pause`
+        : exercise.rounds
+          ? `${exercise.rounds} x ${exercise.workSeconds} sek arbeid • ${exercise.restSeconds} sek pause`
+          : exercise.sets && exercise.reps
+            ? `${exercise.sets} x ${exercise.reps} reps • ${exercise.restSeconds} sek pause`
+            : '';
+      const exercisePlanInfo = planInfo
+        ? `<div class="exercise-plan"><strong>Anbefalt:</strong> ${planInfo}</div>`
+        : '';
+      const equipmentNames = {
+        bodyweight: 'kroppsvekt', dumbbell: 'manualer', kettlebell: 'kettlebell', barbell: 'stang',
+        machine: 'apparat', 'cable-machine': 'kabelapparat', 'rowing-machine': 'romaskin',
+        'stationary-bike': 'ergometersykkel', 'pull-up-bar': 'pull-up-stang'
+      };
+      const equipmentInfo = exercise.equipment?.length
+        ? `<div class="exercise-equipment">Utstyr: ${exercise.equipment.map((item) => equipmentNames[item] || item).join(', ')}</div>`
+        : '';
+      const citedSources = (exercise.sourceIds || [])
+        .map((sourceId) => exerciseSources[sourceId])
+        .filter(Boolean);
+      const sourceInfo = citedSources.length
+        ? `<div class="exercise-source">Kilde: ${citedSources.map((source) => `<a href="${source.url}" target="_blank" rel="noreferrer">${source.title}</a>`).join(', ')}</div>`
+        : '<div class="exercise-source source-needs-review">Kildegrunnlag ikke kontrollert ennå</div>';
       const videoLink = exercise.videoUrl
         ? `<a href="${exercise.videoUrl}" target="_blank" rel="noreferrer">Se video</a>`
         : '';
 
       return `
         <li>
-          <strong>${label}</strong>
-          ${instruction ? `<div>${instruction}</div>` : ''}
-          ${videoLink ? `<div class="exercise-link">${videoLink}</div>` : ''}
+          <div class="exercise-row">
+            ${renderExerciseDemo(exercise)}
+            <div class="exercise-copy">
+              <strong>${label}</strong>
+              ${instruction ? `<div class="exercise-instruction"><strong>Korrekt utførelse:</strong> ${instruction}</div>` : ''}
+              ${exercisePlanInfo}
+              ${equipmentInfo}
+              ${sourceInfo}
+              ${muscleTags ? `<div class="muscle-list">Muskelgrupper: ${muscleTags}</div>` : ''}
+              ${videoLink ? `<div class="exercise-link">${videoLink}</div>` : ''}
+            </div>
+          </div>
         </li>
       `;
     })
@@ -103,12 +179,22 @@ function updateView() {
   const selectedTime = Number(formData.get('time'));
   const selectedFocus = formData.get('focus');
   const selectedEnergy = formData.get('energy');
+  const selectedTrainingMode = formData.get('trainingMode');
+  const selectedLevel = formData.get('level');
+  const selectedEquipment = formData.getAll('profile-equipment');
+
+  if (selectedTrainingMode === 'custom') {
+    userProfile = writeUserProfile({ equipment: selectedEquipment });
+  }
 
   const suggestion = getWorkoutSuggestion({
     time: selectedTime,
     focus: selectedFocus,
     energy: selectedEnergy,
-    history: workoutHistory
+    history: workoutHistory,
+    trainingMode: selectedTrainingMode,
+    level: selectedLevel,
+    availableEquipment: userProfile.equipment
   });
 
   const nextWeightSuggestion = suggestNextWeight(workoutHistory);

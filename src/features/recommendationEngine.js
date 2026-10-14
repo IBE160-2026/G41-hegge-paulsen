@@ -1,13 +1,77 @@
 import { exerciseData } from '../data/exerciseCatalog.js';
+import { profileEquipmentOptions } from './userProfile.js';
+
+const validEquipmentIds = new Set(profileEquipmentOptions.map((option) => option.id));
 
 function formatExerciseLabel(exercise) {
   return `${exercise.name.no} (${exercise.name.en})`;
 }
 
-export function getWorkoutSuggestion({ time, focus, energy, history = [] }) {
+function getExercisePlan(exercise, focus, time, energy) {
+  if (focus === 'styrke') {
+    if (exercise.movementPattern === 'core') {
+      return {
+        ...exercise,
+        sets: 3,
+        holdSeconds: energy === 'low' ? 15 : energy === 'high' ? 40 : 25,
+        restSeconds: 45,
+        type: 'styrke'
+      };
+    }
+
+    const sets = energy === 'low' ? 2 : energy === 'high' ? 4 : 3;
+    const baseReps = energy === 'low' ? 8 : energy === 'high' ? 10 : 8;
+    const restSeconds = time <= 20 ? 75 : energy === 'low' ? 90 : 75;
+
+    return {
+      ...exercise,
+      sets,
+      reps: Math.max(6, baseReps + (exercise.difficulty === 'hard' ? -2 : 0)),
+      restSeconds,
+      type: 'styrke'
+    };
+  }
+
+  const rounds = time >= 45 ? 5 : 4;
+  const workSeconds = energy === 'low' ? 30 : 45;
+  const restSeconds = energy === 'low' ? 60 : 45;
+
+  return {
+    ...exercise,
+    rounds,
+    workSeconds,
+    restSeconds,
+    type: 'kondisjon'
+  };
+}
+
+const levelRank = { beginner: 1, intermediate: 2, advanced: 3 };
+const equipmentPreference = {
+  'home-bodyweight': ['bodyweight'],
+  'home-dumbbell': ['dumbbell', 'bodyweight'],
+  'home-kettlebell': ['kettlebell', 'bodyweight'],
+  gym: ['barbell', 'machine', 'cable-machine', 'dumbbell', 'kettlebell', 'bodyweight', 'rowing-machine', 'stationary-bike', 'pull-up-bar']
+};
+
+export function getWorkoutSuggestion({ time, focus, energy, history = [], trainingMode = 'home', level = 'intermediate', availableEquipment = [] }) {
   const normalizedFocus = focus || 'generell';
+  const normalizedMode = trainingMode === 'custom'
+    ? 'custom'
+    : equipmentPreference[trainingMode]
+      ? trainingMode
+      : trainingMode === 'gym'
+        ? 'gym'
+        : 'home-dumbbell';
+  const normalizedLevel = levelRank[level] ? level : 'intermediate';
+  const customEquipment = [...new Set(availableEquipment.filter((item) => validEquipmentIds.has(item)))];
 
   const availableExercises = exerciseData.filter((exercise) => {
+    const compatibleEquipment = normalizedMode === 'custom'
+      ? customEquipment.length > 0 && exercise.equipment.every((item) => customEquipment.includes(item))
+      : exercise.trainingModes.includes(normalizedMode);
+    if (!compatibleEquipment || levelRank[exercise.level] > levelRank[normalizedLevel]) {
+      return false;
+    }
     if (normalizedFocus === 'styrke') {
       return exercise.focus === 'styrke';
     }
@@ -21,15 +85,30 @@ export function getWorkoutSuggestion({ time, focus, energy, history = [] }) {
   });
 
   if (!availableExercises.length) {
+    const reason = normalizedMode === 'custom' && customEquipment.length === 0
+      ? 'Velg minst ett tilgjengelig utstyr i brukerprofilen for å få et øktforslag.'
+      : 'Det ble ikke funnet øvelser som passer valgene dine.';
+
     return {
       title: 'Ingen passende øvelser funnet',
       exercises: [],
       exerciseDetails: [],
-      intensity: 'low'
+      intensity: 'low',
+      reason,
+      notes: reason
     };
   }
 
   let prioritizedExercises = [...availableExercises];
+
+  if (normalizedFocus === 'styrke') {
+    const preference = normalizedMode === 'custom'
+      ? [...customEquipment.filter((item) => item !== 'bodyweight'), 'bodyweight']
+      : equipmentPreference[normalizedMode];
+    prioritizedExercises.sort((first, second) => (
+      preference.indexOf(first.equipment[0]) - preference.indexOf(second.equipment[0])
+    ));
+  }
 
   if (normalizedFocus === 'styrke' && (time <= 20 || energy === 'low')) {
     const bodyweightExercises = availableExercises.filter((exercise) => exercise.category === 'bodyweight');
@@ -42,7 +121,24 @@ export function getWorkoutSuggestion({ time, focus, energy, history = [] }) {
     prioritizedExercises = [...easierExercises, ...availableExercises.filter((exercise) => exercise.difficulty === 'hard')];
   }
 
-  const selectedExercises = prioritizedExercises.slice(0, 3);
+  let selectedExercises = prioritizedExercises.slice(0, 3);
+
+  if (normalizedFocus === 'styrke') {
+    const desiredCount = Math.max(4, Math.min(10, Math.round(time / 12)));
+    const movementPatterns = new Set();
+    selectedExercises = prioritizedExercises.filter((exercise) => {
+      if (movementPatterns.has(exercise.movementPattern)) return false;
+      movementPatterns.add(exercise.movementPattern);
+      return true;
+    }).slice(0, desiredCount);
+  }
+
+  if (normalizedFocus === 'kondisjon') {
+    const branchCount = time >= 45 ? 2 : 1;
+    selectedExercises = prioritizedExercises.slice(0, branchCount);
+  }
+
+  const exerciseDetails = selectedExercises.map((exercise) => getExercisePlan(exercise, normalizedFocus, time, energy));
 
   let intensity = 'medium';
   if (energy === 'low') intensity = 'low';
@@ -59,14 +155,25 @@ export function getWorkoutSuggestion({ time, focus, energy, history = [] }) {
     intensity = 'high';
   }
 
+  const setupLabel = normalizedMode === 'gym'
+    ? 'utstyr på treningssenter'
+    : normalizedMode === 'custom'
+      ? 'utstyret i brukerprofilen'
+    : normalizedMode === 'home-bodyweight'
+      ? 'kroppsvekt hjemme'
+      : normalizedMode === 'home-kettlebell'
+        ? 'kettlebell hjemme'
+        : 'manualer hjemme';
+  const levelLabel = normalizedLevel === 'beginner' ? 'nybegynnernivå' : normalizedLevel === 'advanced' ? 'viderekommet nivå' : 'middels nivå';
   const reason = time <= 20 || energy === 'low'
-    ? `Kort tilgjengelig tid og lav energi betyr at dette blir en lettere, mer kontrollert økt med kroppsvekt og enkel teknikk.`
-    : `Du har nok tid og energi til å bruke en mer struktureret og utfordrende økt med fokus på ${normalizedFocus}.`;
+    ? `Kort tid eller lav energi gir en roligere økt tilpasset ${setupLabel} og ${levelLabel}.`
+    : `Forslaget er tilpasset ${normalizedFocus}, ${setupLabel} og ${levelLabel}.`;
 
   return {
     title: normalizedFocus === 'styrke' ? 'Styrkeøkt' : normalizedFocus === 'kondisjon' ? 'Kondisjonsøkt' : 'Generell treningsøkt',
-    exercises: selectedExercises.map((exercise) => formatExerciseLabel(exercise)),
-    exerciseDetails: selectedExercises,
+    exercises: exerciseDetails.map((exercise) => formatExerciseLabel(exercise)),
+    exerciseDetails,
+    availableEquipment: normalizedMode === 'custom' ? customEquipment : equipmentPreference[normalizedMode],
     intensity,
     duration: time,
     reason,

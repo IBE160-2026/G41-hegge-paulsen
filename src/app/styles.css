@@ -78,6 +78,45 @@ h1 {
   align-items: end;
 }
 
+.equipment-profile {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.equipment-profile[hidden] {
+  display: none;
+}
+
+.equipment-profile legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.equipment-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.equipment-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.equipment-option input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--success);
+}
+
 .field-group {
   display: flex;
   flex-direction: column;
@@ -170,13 +209,28 @@ button:active {
 
 .exercise-list {
   margin: 14px 0 16px;
-  padding-left: 18px;
+  padding-left: 0;
   color: var(--text);
   line-height: 1.6;
+  list-style: none;
 }
 
 .exercise-list li {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f9fbff;
+}
+
+.exercise-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.exercise-copy {
+  flex: 1;
 }
 
 .exercise-list strong {
@@ -188,6 +242,163 @@ button:active {
   color: var(--muted);
   font-size: 0.92rem;
   line-height: 1.5;
+}
+
+.exercise-instruction {
+  margin-top: 8px;
+  color: var(--text);
+}
+
+.exercise-instruction strong {
+  display: inline;
+  margin-right: 4px;
+  color: var(--primary-dark);
+}
+
+.exercise-plan {
+  margin-top: 8px;
+  color: var(--primary-dark);
+  font-weight: 700;
+}
+
+.exercise-source {
+  margin-top: 6px;
+  font-size: 0.82rem;
+}
+
+.exercise-source a {
+  color: var(--primary-dark);
+}
+
+.source-needs-review {
+  color: #805b12;
+}
+
+.exercise-demo {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #eff8f5, #dcefe8);
+  border: 1px solid #c8e2d7;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.demo-head {
+  position: absolute;
+  z-index: 1;
+  left: 28px;
+  top: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #df9c68;
+  transform-origin: center 22px;
+}
+
+.demo-body {
+  position: absolute;
+  left: 27px;
+  top: 21px;
+  width: 14px;
+  height: 21px;
+  border-radius: 7px 7px 5px 5px;
+  background: #147a63;
+  transform-origin: center top;
+}
+
+.demo-arm,
+.demo-leg {
+  position: absolute;
+  display: block;
+  background: #1e4f57;
+  border-radius: 999px;
+  transform-origin: center top;
+}
+
+.demo-arm.left,
+.demo-arm.right {
+  width: 7px;
+  height: 20px;
+  top: 23px;
+}
+
+.demo-arm.left { left: 23px; transform: rotate(28deg); }
+.demo-arm.right { right: 23px; transform: rotate(-28deg); }
+
+.demo-leg.left,
+.demo-leg.right {
+  width: 8px;
+  height: 20px;
+  top: 39px;
+  transform-origin: center top;
+}
+
+.demo-leg.left { left: 27px; }
+.demo-leg.right { right: 27px; }
+
+.exercise-demo.squat .demo-body,
+.exercise-demo.air-squat .demo-body { animation: squatBody 1.8s ease-in-out infinite; }
+.exercise-demo.squat .demo-head,
+.exercise-demo.air-squat .demo-head { animation: squatHead 1.8s ease-in-out infinite; }
+.exercise-demo.squat .demo-leg.left,
+.exercise-demo.air-squat .demo-leg.left { animation: squatLeft 1.8s ease-in-out infinite; }
+.exercise-demo.squat .demo-leg.right,
+.exercise-demo.air-squat .demo-leg.right { animation: squatRight 1.8s ease-in-out infinite; }
+.exercise-demo.squat .demo-arm.left,
+.exercise-demo.air-squat .demo-arm.left { animation: squatArmLeft 1.8s ease-in-out infinite; }
+.exercise-demo.squat .demo-arm.right,
+.exercise-demo.air-squat .demo-arm.right { animation: squatArmRight 1.8s ease-in-out infinite; }
+.exercise-demo.push-up .demo-body { animation: pushUpBody 1.4s ease-in-out infinite; }
+.exercise-demo.push-up .demo-arm.left { animation: pushUpLeft 1.4s ease-in-out infinite; }
+.exercise-demo.push-up .demo-arm.right { animation: pushUpRight 1.4s ease-in-out infinite; }
+.exercise-demo.rowing .demo-arm.left { animation: rowLeft 1.2s ease-in-out infinite; }
+.exercise-demo.rowing .demo-arm.right { animation: rowRight 1.2s ease-in-out infinite; }
+.exercise-demo.cycling .demo-leg.left { animation: cycleLeft 0.8s linear infinite; }
+.exercise-demo.cycling .demo-leg.right { animation: cycleRight 0.8s linear infinite; }
+.exercise-demo.pull-up .demo-arm.left { animation: pullUpLeft 1.4s ease-in-out infinite; }
+.exercise-demo.pull-up .demo-arm.right { animation: pullUpRight 1.4s ease-in-out infinite; }
+.exercise-demo.lunges .demo-leg.left { animation: lungeLeft 1.5s ease-in-out infinite; }
+.exercise-demo.lunges .demo-leg.right { animation: lungeRight 1.5s ease-in-out infinite; }
+.exercise-demo.deadlift .demo-body { animation: deadliftBody 1.8s ease-in-out infinite; }
+.exercise-demo.deadlift .demo-head { animation: deadliftHead 1.8s ease-in-out infinite; }
+.exercise-demo.deadlift .demo-leg.left,
+.exercise-demo.deadlift .demo-leg.right { animation: deadliftLegs 1.8s ease-in-out infinite; }
+.exercise-demo.deadlift .demo-arm.left,
+.exercise-demo.deadlift .demo-arm.right { animation: deadliftArms 1.8s ease-in-out infinite; }
+.exercise-demo.bench-press .demo-body { animation: benchBody 1.6s ease-in-out infinite; }
+.exercise-demo.bench-press .demo-arm.left { animation: benchArmLeft 1.6s ease-in-out infinite; }
+.exercise-demo.bench-press .demo-arm.right { animation: benchArmRight 1.6s ease-in-out infinite; }
+.exercise-demo.burpee .demo-body { animation: burpeeBody 2.2s ease-in-out infinite; }
+.exercise-demo.burpee .demo-head { animation: burpeeHead 2.2s ease-in-out infinite; }
+.exercise-demo.burpee .demo-leg.left { animation: burpeeLegLeft 2.2s ease-in-out infinite; }
+.exercise-demo.burpee .demo-leg.right { animation: burpeeLegRight 2.2s ease-in-out infinite; }
+.exercise-demo.burpee .demo-arm.left { animation: burpeeArmLeft 2.2s ease-in-out infinite; }
+.exercise-demo.burpee .demo-arm.right { animation: burpeeArmRight 2.2s ease-in-out infinite; }
+.exercise-demo.mountain-climbers .demo-body { animation: climberBody 0.9s ease-in-out infinite; }
+.exercise-demo.mountain-climbers .demo-leg.left { animation: climberLeft 0.9s ease-in-out infinite; }
+.exercise-demo.mountain-climbers .demo-leg.right { animation: climberRight 0.9s ease-in-out infinite; }
+.exercise-demo.mobility-flow .demo-body { animation: mobilityFloat 1.6s ease-in-out infinite; }
+
+.muscle-list {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.muscle-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #e8f6ee;
+  border: 1px solid #ccead9;
+  color: #136b47;
+  font-size: 0.75rem;
+  font-weight: 700;
 }
 
 .exercise-link {
@@ -202,6 +413,50 @@ button:active {
 
 .exercise-link a:hover {
   text-decoration: underline;
+}
+
+@keyframes squatBody { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(7px) rotate(-8deg); } }
+@keyframes squatHead { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(5px); } }
+@keyframes squatLeft { 0%, 100% { transform: rotate(4deg); } 50% { transform: rotate(30deg); } }
+@keyframes squatRight { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(-30deg); } }
+@keyframes squatArmLeft { 0%, 100% { transform: rotate(28deg); } 50% { transform: rotate(-8deg); } }
+@keyframes squatArmRight { 0%, 100% { transform: rotate(-28deg); } 50% { transform: rotate(8deg); } }
+@keyframes pushUpBody { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+@keyframes pushUpLeft { 0%, 100% { transform: rotate(70deg); } 50% { transform: rotate(105deg); } }
+@keyframes pushUpRight { 0%, 100% { transform: rotate(-70deg); } 50% { transform: rotate(-105deg); } }
+@keyframes rowLeft { 0%, 100% { transform: rotate(70deg); } 50% { transform: rotate(12deg); } }
+@keyframes rowRight { 0%, 100% { transform: rotate(-70deg); } 50% { transform: rotate(-12deg); } }
+@keyframes cycleLeft { 0%, 100% { transform: rotate(-35deg); } 50% { transform: rotate(35deg); } }
+@keyframes cycleRight { 0%, 100% { transform: rotate(35deg); } 50% { transform: rotate(-35deg); } }
+@keyframes pullUpLeft { 0%, 100% { transform: rotate(65deg); } 50% { transform: rotate(-35deg); } }
+@keyframes pullUpRight { 0%, 100% { transform: rotate(-65deg); } 50% { transform: rotate(35deg); } }
+@keyframes lungeLeft { 0%, 100% { transform: rotate(4deg); } 50% { transform: rotate(48deg); } }
+@keyframes lungeRight { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(-48deg); } }
+@keyframes deadliftBody { 0%, 100% { transform: rotate(0); } 50% { transform: translateY(8px) rotate(48deg); } }
+@keyframes deadliftHead { 0%, 100% { transform: rotate(0); } 50% { transform: translate(9px, 9px) rotate(24deg); } }
+@keyframes deadliftLegs { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(8deg); } }
+@keyframes deadliftArms { 0%, 100% { transform: rotate(24deg); } 50% { transform: rotate(62deg); } }
+@keyframes benchBody { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(78deg) translateY(2px); } }
+@keyframes benchArmLeft { 0%, 100% { transform: rotate(-55deg); } 50% { transform: rotate(-115deg); } }
+@keyframes benchArmRight { 0%, 100% { transform: rotate(55deg); } 50% { transform: rotate(115deg); } }
+@keyframes burpeeBody { 0%, 20%, 100% { transform: translateY(0); } 42%, 68% { transform: translateY(13px) rotate(75deg); } 86% { transform: translateY(-5px); } }
+@keyframes burpeeHead { 0%, 20%, 100% { transform: translateY(0); } 42%, 68% { transform: translate(13px, 9px); } 86% { transform: translateY(-5px); } }
+@keyframes burpeeLegLeft { 0%, 20%, 100% { transform: rotate(0); } 42%, 68% { transform: rotate(80deg); } }
+@keyframes burpeeLegRight { 0%, 20%, 100% { transform: rotate(0); } 42%, 68% { transform: rotate(-80deg); } }
+@keyframes burpeeArmLeft { 0%, 20%, 100% { transform: rotate(28deg); } 42%, 68% { transform: rotate(100deg); } }
+@keyframes burpeeArmRight { 0%, 20%, 100% { transform: rotate(-28deg); } 42%, 68% { transform: rotate(-100deg); } }
+@keyframes climberBody { 0%, 100% { transform: rotate(72deg) translateY(1px); } 50% { transform: rotate(72deg) translateY(4px); } }
+@keyframes climberLeft { 0%, 100% { transform: rotate(58deg); } 50% { transform: rotate(-48deg); } }
+@keyframes climberRight { 0%, 100% { transform: rotate(-48deg); } 50% { transform: rotate(58deg); } }
+@keyframes mobilityFloat { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-4px) rotate(8deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .exercise-demo *,
+  .exercise-demo *::before,
+  .exercise-demo *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
 
 .meta,
