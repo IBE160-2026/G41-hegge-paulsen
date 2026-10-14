@@ -98,18 +98,18 @@ export function getProgressSummary(history = []) {
   };
 }
 
-export function readStoredHistory() {
+export function readStoredHistory(storageKey = STORAGE_KEY, storage = globalThis.localStorage) {
   try {
-    const rawHistory = localStorage.getItem(STORAGE_KEY);
+    const rawHistory = storage.getItem(storageKey);
     return rawHistory ? JSON.parse(rawHistory) : [];
   } catch (error) {
     return [];
   }
 }
 
-export function writeStoredHistory(history = []) {
+export function writeStoredHistory(history = [], storageKey = STORAGE_KEY, storage = globalThis.localStorage) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    storage.setItem(storageKey, JSON.stringify(history));
   } catch (error) {
     // ignore storage failures in restricted environments
   }

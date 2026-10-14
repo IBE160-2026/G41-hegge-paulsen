@@ -1,15 +1,38 @@
 import { getWorkoutSuggestion } from '../features/recommendationEngine.js';
 import { exerciseSources } from '../data/exerciseCatalog.js';
 import { profileEquipmentOptions, readUserProfile, writeUserProfile } from '../features/userProfile.js';
+import { supabase } from '../features/supabaseClient.js';
+import {
+  loadProfile,
+  saveProfile,
+  saveProfileEquipment,
+  sendPasswordReset,
+  signIn,
+  signOut,
+  signUp,
+  updatePassword
+} from '../features/supabaseAccount.js';
 import { suggestNextWeight } from '../features/weightProgression.js';
 import {
   getLatestWorkoutSummary,
   getProgressSummary,
   logWorkout,
   readStoredHistory,
-  writeStoredHistory
+  writeStoredHistory,
+  STORAGE_KEY
 } from '../features/trainingLog.js';
 import { userHistory } from '../data/sampleHistory.js';
+
+const accountPage = new URLSearchParams(window.location.search).get('view') === 'account';
+const pageTitle = document.getElementById('page-title');
+const accountNavigation = document.getElementById('account-navigation');
+
+document.body.classList.toggle('account-page', accountPage);
+if (accountPage) {
+  pageTitle.textContent = 'Konto';
+  accountNavigation.href = '/';
+  accountNavigation.textContent = 'Tilbake til økt';
+}
 
 const form = document.getElementById('workout-form');
 const suggestionTitle = document.getElementById('suggestion-title');
@@ -29,9 +52,25 @@ const logForm = document.getElementById('workout-log-form');
 const trainingModeSelect = document.getElementById('training-mode');
 const customEquipmentPanel = document.getElementById('custom-equipment-panel');
 const profileEquipmentOptionsContainer = document.getElementById('profile-equipment-options');
+const accountStatus = document.getElementById('account-status');
+const accountAuthForm = document.getElementById('account-auth-form');
+const accountProfileForm = document.getElementById('account-profile-form');
+const accountRecoveryForm = document.getElementById('account-recovery-form');
+const accountEquipmentOptionsContainer = document.getElementById('account-equipment-options');
+const accountEmail = document.getElementById('account-email');
+const accountPassword = document.getElementById('account-password');
+const signUpButton = document.getElementById('sign-up-button');
+const resetPasswordButton = document.getElementById('reset-password-button');
+const signOutButton = document.getElementById('sign-out-button');
+const profileUsername = document.getElementById('profile-username');
+const profileAge = document.getElementById('profile-age');
+const profileBodyWeight = document.getElementById('profile-body-weight');
 
 let workoutHistory = readStoredHistory();
+let historyStorageKey = STORAGE_KEY;
 let userProfile = readUserProfile();
+let currentUser = null;
+let hasRemoteProfile = false;
 
 function renderEquipmentOptions(container, inputName, selectedEquipment) {
   container.innerHTML = profileEquipmentOptions
@@ -44,7 +83,20 @@ function renderEquipmentOptions(container, inputName, selectedEquipment) {
     .join('');
 }
 
+function syncEquipmentSelections(equipment) {
+  document.querySelectorAll('input[name="profile-equipment"], input[name="account-equipment"]')
+    .forEach((input) => {
+      input.checked = equipment.includes(input.value);
+    });
+}
+
+function setAccountStatus(message, isError = false) {
+  accountStatus.textContent = message;
+  accountStatus.classList.toggle('account-error', isError);
+}
+
 renderEquipmentOptions(profileEquipmentOptionsContainer, 'profile-equipment', userProfile.equipment);
+renderEquipmentOptions(accountEquipmentOptionsContainer, 'account-equipment', userProfile.equipment);
 
 function updateCustomEquipmentVisibility() {
   customEquipmentPanel.hidden = trainingModeSelect.value !== 'custom';
@@ -53,9 +105,180 @@ function updateCustomEquipmentVisibility() {
 trainingModeSelect.addEventListener('change', updateCustomEquipmentVisibility);
 updateCustomEquipmentVisibility();
 
+async function applySession(session) {
+  currentUser = session?.user || null;
+  accountAuthForm.hidden = Boolean(currentUser);
+  accountProfileForm.hidden = !currentUser;
+  accountRecoveryForm.hidden = true;
+  signOutButton.hidden = !currentUser;
+
+  if (!currentUser) {
+    hasRemoteProfile = false;
+    historyStorageKey = STORAGE_KEY;
+    workoutHistory = readStoredHistory(historyStorageKey);
+    if (!workoutHistory.length) {
+      workoutHistory = [...userHistory];
+      writeStoredHistory(workoutHistory, historyStorageKey);
+    }
+    userProfile = readUserProfile();
+    syncEquipmentSelections(userProfile.equipment);
+    setAccountStatus('Ikke logget inn. Treningsforslag kan fortsatt brukes lokalt.');
+    void updateView();
+    return;
+  }
+
+  historyStorageKey = `${STORAGE_KEY}:${currentUser.id}`;
+  workoutHistory = readStoredHistory(historyStorageKey);
+  if (!workoutHistory.length) {
+    workoutHistory = [...userHistory];
+    writeStoredHistory(workoutHistory, historyStorageKey);
+  }
+  setAccountStatus(`Innlogget som ${currentUser.email}. Henter profilen ...`);
+
+  try {
+    const profile = await loadProfile(supabase, currentUser.id);
+    hasRemoteProfile = Boolean(profile);
+    profileUsername.value = profile?.username || '';
+    profileAge.value = profile?.age ?? '';
+    profileBodyWeight.value = profile?.body_weight_kg ?? '';
+    userProfile = writeUserProfile({ equipment: profile?.equipment || ['bodyweight', 'dumbbell'] });
+    syncEquipmentSelections(userProfile.equipment);
+    setAccountStatus(profile
+      ? `Innlogget som ${currentUser.email}. Profilen er synkronisert.`
+      : `Innlogget som ${currentUser.email}. Fyll ut og lagre profilen for å synkronisere den.`);
+    void updateView();
+  } catch (error) {
+    setAccountStatus(`Kunne ikke hente profilen: ${error.message}`, true);
+    void updateView();
+  }
+}
+
+function accountErrorMessage(error) {
+  if (error.code === '23505') return 'Brukernavnet er allerede i bruk. Velg et annet.';
+  if (error.code === '23514') return 'Kontroller brukernavn, alder, vekt og utstyrsvalg.';
+  return error.message || 'Noe gikk galt. Prøv igjen.';
+}
+
+if (!supabase) {
+  accountAuthForm.hidden = true;
+  setAccountStatus('Supabase er ikke konfigurert ennå. Legg prosjekt-URL og publishable key i .env.local.');
+} else {
+  supabase.auth.onAuthStateChange((event, session) => {
+    window.setTimeout(() => {
+      if (event === 'PASSWORD_RECOVERY') {
+        accountAuthForm.hidden = true;
+        accountProfileForm.hidden = true;
+        accountRecoveryForm.hidden = false;
+        signOutButton.hidden = false;
+        setAccountStatus('Velg et nytt passord for kontoen din.');
+      } else {
+        void applySession(session);
+      }
+    }, 0);
+  });
+  supabase.auth.getSession()
+    .then(({ data, error }) => {
+      if (error) throw error;
+      return applySession(data.session);
+    })
+    .catch((error) => setAccountStatus(`Kunne ikke kontrollere innlogging: ${error.message}`, true));
+}
+
+accountAuthForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!accountAuthForm.reportValidity()) return;
+  try {
+    await signIn(supabase, accountEmail.value.trim(), accountPassword.value);
+    accountPassword.value = '';
+  } catch (error) {
+    setAccountStatus(accountErrorMessage(error), true);
+  }
+});
+
+signUpButton.addEventListener('click', async () => {
+  if (!accountAuthForm.reportValidity()) return;
+  try {
+    const result = await signUp(supabase, accountEmail.value.trim(), accountPassword.value, window.location.origin);
+    accountPassword.value = '';
+    setAccountStatus(result.session
+      ? 'Konto opprettet. Fullfør profilen din nedenfor.'
+      : 'Konto opprettet. Sjekk e-posten din for å bekrefte kontoen før du logger inn.');
+  } catch (error) {
+    setAccountStatus(accountErrorMessage(error), true);
+  }
+});
+
+resetPasswordButton.addEventListener('click', async () => {
+  if (!accountEmail.value.trim()) {
+    accountEmail.reportValidity();
+    setAccountStatus('Skriv inn e-postadressen din først.', true);
+    return;
+  }
+  if (!accountEmail.checkValidity()) {
+    accountEmail.reportValidity();
+    setAccountStatus('Skriv inn en gyldig e-postadresse.', true);
+    return;
+  }
+  try {
+    await sendPasswordReset(supabase, accountEmail.value.trim(), window.location.origin);
+    setAccountStatus('Hvis adressen har en konto, får du en e-post med lenke for å tilbakestille passordet.');
+  } catch (error) {
+    setAccountStatus(accountErrorMessage(error), true);
+  }
+});
+
+signOutButton.addEventListener('click', async () => {
+  try {
+    await signOut(supabase);
+  } catch (error) {
+    setAccountStatus(accountErrorMessage(error), true);
+  }
+});
+
+accountRecoveryForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const password = new FormData(accountRecoveryForm).get('password');
+  try {
+    await updatePassword(supabase, password);
+    accountRecoveryForm.reset();
+    await applySession((await supabase.auth.getSession()).data.session);
+    setAccountStatus('Passordet er oppdatert.');
+  } catch (error) {
+    setAccountStatus(accountErrorMessage(error), true);
+  }
+});
+
+accountProfileForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!currentUser) return;
+
+  const formData = new FormData(accountProfileForm);
+  const age = formData.get('age');
+  const bodyWeightKg = formData.get('bodyWeightKg');
+  const equipment = formData.getAll('account-equipment');
+
+  try {
+    const profile = await saveProfile(supabase, {
+      id: currentUser.id,
+      username: String(formData.get('username')).trim(),
+      age: age ? Number(age) : null,
+      body_weight_kg: bodyWeightKg ? Number(bodyWeightKg) : null,
+      equipment
+    });
+    hasRemoteProfile = true;
+    userProfile = writeUserProfile({ equipment: profile.equipment });
+    profileAge.value = profile.age ?? '';
+    profileBodyWeight.value = profile.body_weight_kg ?? '';
+    syncEquipmentSelections(userProfile.equipment);
+    setAccountStatus('Profilen er lagret og synkronisert.');
+  } catch (error) {
+    setAccountStatus(accountErrorMessage(error), true);
+  }
+});
+
 if (!workoutHistory.length) {
   workoutHistory = [...userHistory];
-  writeStoredHistory(workoutHistory);
+  writeStoredHistory(workoutHistory, historyStorageKey);
 }
 
 function renderExerciseDemo(exercise) {
@@ -174,7 +397,7 @@ function renderProgress(history) {
     .join('');
 }
 
-function updateView() {
+async function updateView() {
   const formData = new FormData(form);
   const selectedTime = Number(formData.get('time'));
   const selectedFocus = formData.get('focus');
@@ -185,6 +408,15 @@ function updateView() {
 
   if (selectedTrainingMode === 'custom') {
     userProfile = writeUserProfile({ equipment: selectedEquipment });
+    if (currentUser && hasRemoteProfile) {
+      try {
+        await saveProfileEquipment(supabase, currentUser.id, userProfile.equipment);
+      } catch (error) {
+        setAccountStatus(`Kunne ikke synkronisere utstyrslisten: ${accountErrorMessage(error)}`, true);
+      }
+    } else if (currentUser) {
+      setAccountStatus('Lagre profilen din først for å synkronisere utstyrslisten til kontoen.');
+    }
   }
 
   const suggestion = getWorkoutSuggestion({
@@ -206,7 +438,7 @@ function updateView() {
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();
-  updateView();
+  void updateView();
 });
 
 logForm.addEventListener('submit', (event) => {
@@ -223,8 +455,8 @@ logForm.addEventListener('submit', (event) => {
     performance: formData.get('log-performance') || 'good'
   });
 
-  writeStoredHistory(workoutHistory);
-  updateView();
+  writeStoredHistory(workoutHistory, historyStorageKey);
+  void updateView();
   logForm.reset();
   document.getElementById('log-date').value = new Date().toISOString().slice(0, 10);
 });

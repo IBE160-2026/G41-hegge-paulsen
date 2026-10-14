@@ -6,6 +6,7 @@ Prosjektet bygger en enkel treningsapp som gir brukeren et målrettet øktforsla
 
 ## Hva appen gjør nå
 - genererer øktforslag etter valg av tid, fokus og energi
+- lar brukeren registrere/logge inn via Supabase og lagre profil, dersom Supabase er konfigurert
 - bruker lokal historikk som fallback-data
 - foreslår neste belastning
 - viser enkel progresjon og treningsstatus
@@ -52,6 +53,8 @@ npm run dev
 http://localhost:5173/
 ```
 
+Konto-funksjonene krever prosjektoppsett og lokale miljøvariabler. Se [docs/supabase-setup.md](docs/supabase-setup.md).
+
 ## Testing
 ```bash
 npm test
@@ -60,6 +63,7 @@ npm test
 ## Dokumentasjon
 - [docs/README.md](docs/README.md) – struktur og mapper
 - [docs/exercise-sources.md](docs/exercise-sources.md) – kilder og kildeverifisering for øvelseskatalogen
+- [docs/supabase-setup.md](docs/supabase-setup.md) – Supabase-prosjekt, innlogging og profil-database
 - [error/README.md](error/README.md) – dokumentasjon av feil og løsninger
 - [_bmad-output/planning-artifacts]( _bmad-output/planning-artifacts ) – planlegging og MVP-artefakter
 

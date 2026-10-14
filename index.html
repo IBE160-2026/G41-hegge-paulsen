@@ -9,10 +9,69 @@
   <body>
     <main class="container">
       <header class="header">
-        <span class="app-badge">MVP</span>
-        <p class="eyebrow">SmartØkt</p>
-        <h1>Treningsøkt tilpasset deg</h1>
+        <div class="header-copy">
+          <span class="app-badge">MVP</span>
+          <p class="eyebrow">SmartØkt</p>
+          <h1 id="page-title">Treningsøkt tilpasset deg</h1>
+        </div>
+        <a id="account-navigation" class="account-link" href="?view=account">Konto</a>
       </header>
+
+      <section id="account-panel" class="card account-card" aria-labelledby="account-title">
+        <div class="account-heading">
+          <div>
+            <h2 id="account-title">Konto</h2>
+            <p id="account-status" class="meta" role="status" aria-live="polite">Kontrollerer konto-oppsett ...</p>
+          </div>
+          <button id="sign-out-button" class="secondary-button" type="button" hidden>Logg ut</button>
+        </div>
+
+        <form id="account-auth-form" class="account-form">
+          <div class="field-group">
+            <label for="account-email">E-post</label>
+            <input id="account-email" name="email" type="email" autocomplete="email" required />
+          </div>
+          <div class="field-group">
+            <label for="account-password">Passord</label>
+            <input id="account-password" name="password" type="password" autocomplete="current-password" minlength="8" required />
+          </div>
+          <div class="account-actions">
+            <button id="sign-in-button" type="submit">Logg inn</button>
+            <button id="sign-up-button" class="secondary-button" type="button">Opprett konto</button>
+            <button id="reset-password-button" class="text-button" type="button">Glemt passord?</button>
+          </div>
+        </form>
+
+        <form id="account-profile-form" class="account-profile-form" hidden>
+          <div class="account-form">
+            <div class="field-group">
+              <label for="profile-username">Brukernavn</label>
+              <input id="profile-username" name="username" type="text" minlength="3" maxlength="24" pattern="[A-Za-z0-9_.-]{3,24}" autocomplete="username" required />
+            </div>
+            <div class="field-group">
+              <label for="profile-age">Alder (valgfritt)</label>
+              <input id="profile-age" name="age" type="number" min="13" max="120" step="1" inputmode="numeric" />
+            </div>
+            <div class="field-group">
+              <label for="profile-body-weight">Kroppsvekt i kg (valgfritt)</label>
+              <input id="profile-body-weight" name="bodyWeightKg" type="number" min="20" max="400" step="0.1" inputmode="decimal" />
+            </div>
+          </div>
+          <fieldset class="field-group equipment-profile">
+            <legend>Utstyr du har tilgang til</legend>
+            <div id="account-equipment-options" class="equipment-options"></div>
+          </fieldset>
+          <button type="submit">Lagre profil</button>
+        </form>
+
+        <form id="account-recovery-form" class="account-form" hidden>
+          <div class="field-group">
+            <label for="recovery-password">Nytt passord</label>
+            <input id="recovery-password" name="password" type="password" autocomplete="new-password" minlength="8" required />
+          </div>
+          <button type="submit">Lagre nytt passord</button>
+        </form>
+      </section>
 
       <section id="workout-config" class="card">
         <form id="workout-form">

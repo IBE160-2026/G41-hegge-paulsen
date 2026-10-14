@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getWorkoutSuggestion } from '../src/features/recommendationEngine.js';
 import { suggestNextWeight } from '../src/features/weightProgression.js';
-import { logWorkout, getProgressSummary, getLatestWorkoutSummary } from '../src/features/trainingLog.js';
+import { logWorkout, getProgressSummary, getLatestWorkoutSummary, readStoredHistory, writeStoredHistory } from '../src/features/trainingLog.js';
 import { exerciseData, exerciseSources } from '../src/data/exerciseCatalog.js';
 import { readUserProfile, writeUserProfile } from '../src/features/userProfile.js';
 
@@ -293,5 +293,21 @@ describe('Workout recommendation', () => {
 
     expect(result.exerciseDetails).toEqual([]);
     expect(result.reason).toContain('Velg minst ett');
+  });
+
+  it('stores workout histories separately for different account keys', () => {
+    const values = new Map();
+    const storage = {
+      getItem: (key) => values.get(key) || null,
+      setItem: (key, value) => values.set(key, value)
+    };
+    const firstUserHistory = [{ id: 1, focus: 'styrke', load: 40 }];
+    const secondUserHistory = [{ id: 1, focus: 'kondisjon', load: 0 }];
+
+    writeStoredHistory(firstUserHistory, 'smartokt-history:user-1', storage);
+    writeStoredHistory(secondUserHistory, 'smartokt-history:user-2', storage);
+
+    expect(readStoredHistory('smartokt-history:user-1', storage)).toEqual(firstUserHistory);
+    expect(readStoredHistory('smartokt-history:user-2', storage)).toEqual(secondUserHistory);
   });
 });
