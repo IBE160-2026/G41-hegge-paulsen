@@ -44,12 +44,12 @@ Prosjektet bygger en enkel treningsapp som gir brukeren et målrettet øktforsla
 ```bash
 cd C:/CodeNChill
 npm install
-python -m http.server 8000
+npm run dev
 ```
 
-Deretter åpner du:
+Åpne URL-en Vite skriver ut, normalt:
 ```text
-http://localhost:8000/
+http://localhost:5173/
 ```
 
 ## Testing
