@@ -157,6 +157,7 @@
           <p class="meta">Siste fokus: <strong id="progress-focus">Ingen</strong></p>
           <p id="latest-workout" class="notes">Ingen økter logget enda.</p>
           <p id="progress-trend" class="notes">Logg minst to økter for å se utvikling.</p>
+          <p class="meta">Uke: <strong id="weekly-guideline-badge">Ikke godkjent uke</strong></p>
           <ul id="progress-list" class="exercise-list"></ul>
         </article>
       </section>
@@ -186,6 +187,15 @@
           <div class="field-group">
             <label for="log-load">Belastning (kg)</label>
             <input id="log-load" name="log-load" type="number" min="0" step="5" value="80" />
+          </div>
+
+          <div class="field-group">
+            <label for="log-intensity">Intensitet</label>
+            <select id="log-intensity" name="log-intensity">
+              <option value="low">Lett</option>
+              <option value="medium" selected>Moderat</option>
+              <option value="high">Høy</option>
+            </select>
           </div>
 
           <div class="field-group">

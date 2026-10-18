@@ -57,12 +57,39 @@ describe('Workout recommendation', () => {
       focus: 'styrke',
       duration: 35,
       load: 85,
-      performance: 'good'
+      performance: 'good',
+      intensity: 'high'
     });
 
     expect(result.length).toBe(3);
     expect(result[result.length - 1].focus).toBe('styrke');
     expect(result[result.length - 1].load).toBe(85);
+    expect(result[result.length - 1].intensity).toBe('high');
+  });
+
+  it('defaults a logged workout\'s intensity to null when omitted', () => {
+    const result = logWorkout([], {
+      focus: 'styrke',
+      duration: 35,
+      load: 85,
+      performance: 'good'
+    });
+
+    expect(result[result.length - 1].intensity).toBe(null);
+  });
+
+  it('defaults a logged workout\'s date to the local calendar day, not UTC', () => {
+    const now = new Date();
+    const expectedLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const result = logWorkout([], {
+      focus: 'styrke',
+      duration: 35,
+      load: 85,
+      performance: 'good'
+    });
+
+    expect(result[result.length - 1].date).toBe(expectedLocalDate);
   });
 
   it('summarizes recent progress from workout history', () => {
@@ -121,9 +148,13 @@ describe('Workout recommendation', () => {
   it('lists the main muscles engaged in each exercise', () => {
     const squat = exerciseData.find((exercise) => exercise.id === 'squat');
     const pushUp = exerciseData.find((exercise) => exercise.id === 'push-up');
+    const rowing = exerciseData.find((exercise) => exercise.id === 'rowing');
+    const cycling = exerciseData.find((exercise) => exercise.id === 'cycling');
 
     expect(squat.muscles).toContain('Ben');
     expect(pushUp.muscles).toContain('Bryst');
+    expect(rowing.muscles).toEqual(['Rygg', 'Armer', 'Skuldre']);
+    expect(cycling.muscles).toEqual(['Ben', 'Gluteus', 'Legger']);
   });
 
   it('prefers bodyweight strength moves for short and low-energy sessions', () => {
@@ -134,7 +165,23 @@ describe('Workout recommendation', () => {
       history: []
     });
 
-    expect(result.exercises.some((exercise) => exercise.toLowerCase().includes('armheving') || exercise.toLowerCase().includes('air squat'))).toBe(true);
+    expect(result.exercises.some((exercise) => exercise.toLowerCase().includes('armheving') || exercise.toLowerCase().includes('mini-knebøy'))).toBe(true);
+  });
+
+  it('picks the gentler bodyweight variant over its harder sibling for the same movement pattern when time is short or energy is low', () => {
+    const squatResult = getWorkoutSuggestion({
+      time: 15,
+      focus: 'styrke',
+      energy: 'low',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'intermediate'
+    });
+
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'air-squat')).toBe(true);
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'squat')).toBe(false);
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'step-up')).toBe(true);
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'lunges')).toBe(false);
   });
 
   it('explains why the recommendation fits the current session', () => {

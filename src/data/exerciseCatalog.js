@@ -103,7 +103,7 @@ const baseExerciseData = [
       no: 'Ta tak i håndtakene, skyv med bena og dra håndtakene mot magen i en jevn, kontinuerlig rytme.',
       en: 'Grab the handles, drive with the legs, and pull the handle toward the torso in a smooth continuous rhythm.'
     },
-    muscles: ['Rygg', 'Armer', 'Kondisjon'],
+    muscles: ['Rygg', 'Armer', 'Skuldre'],
     videoUrl: 'https://www.youtube.com/results?search_query=Roing+Rowing+utf%C3%B8relse',
     animation: 'rowing'
   },
@@ -121,7 +121,7 @@ const baseExerciseData = [
       no: 'Hold en jevn kadens og velg et tempo du kan opprettholde uten å presse for hardt i starten.',
       en: 'Maintain a steady cadence and choose a pace you can sustain without overexerting yourself early on.'
     },
-    muscles: ['Ben', 'Kondisjon', 'Cardio'],
+    muscles: ['Ben', 'Gluteus', 'Legger'],
     videoUrl: 'https://www.youtube.com/results?search_query=Sykling+Cycling+utf%C3%B8relse',
     animation: 'cycling'
   },
@@ -266,8 +266,11 @@ function withSourceStatus(exercise) {
   return { ...exercise, sourceIds, sourceStatus };
 }
 
+// A `category` set here overrides the one in baseExerciseData for that exercise's own
+// catalog entry, but createVariant() reads straight from baseExerciseData, so a variant
+// without its own `category` override still inherits the unoverridden base value.
 const exerciseAttributes = {
-  squat: { equipment: ['bodyweight'], trainingModes: ['home-bodyweight', 'home-dumbbell', 'home-kettlebell', 'gym'], movementPattern: 'squat', level: 'beginner' },
+  squat: { equipment: ['bodyweight'], trainingModes: ['home-bodyweight', 'home-dumbbell', 'home-kettlebell', 'gym'], movementPattern: 'squat', level: 'beginner', category: 'bodyweight' },
   'bench-press': { equipment: ['barbell'], trainingModes: ['gym'], movementPattern: 'horizontal-push', level: 'intermediate' },
   deadlift: { equipment: ['barbell'], trainingModes: ['gym'], movementPattern: 'hinge', level: 'advanced' },
   'push-up': { equipment: ['bodyweight'], trainingModes: ['home-bodyweight', 'home-dumbbell', 'home-kettlebell', 'gym'], movementPattern: 'horizontal-push', level: 'intermediate' },
@@ -276,7 +279,7 @@ const exerciseAttributes = {
   cycling: { equipment: ['stationary-bike'], trainingModes: ['gym'], movementPattern: 'conditioning', level: 'beginner' },
   burpee: { equipment: ['bodyweight'], trainingModes: ['home-bodyweight', 'home-dumbbell', 'home-kettlebell', 'gym'], movementPattern: 'conditioning', level: 'advanced' },
   'mountain-climbers': { equipment: ['bodyweight'], trainingModes: ['home-bodyweight', 'home-dumbbell', 'home-kettlebell', 'gym'], movementPattern: 'conditioning', level: 'intermediate' },
-  lunges: { equipment: ['bodyweight'], trainingModes: ['home-bodyweight', 'home-dumbbell', 'home-kettlebell', 'gym'], movementPattern: 'single-leg', level: 'intermediate' },
+  lunges: { equipment: ['bodyweight'], trainingModes: ['home-bodyweight', 'home-dumbbell', 'home-kettlebell', 'gym'], movementPattern: 'single-leg', level: 'intermediate', category: 'bodyweight' },
   'pull-up': { equipment: ['pull-up-bar'], trainingModes: ['gym'], movementPattern: 'vertical-pull', level: 'advanced' },
   'mobility-flow': { equipment: ['bodyweight'], trainingModes: ['home-bodyweight', 'home-dumbbell', 'home-kettlebell', 'gym'], movementPattern: 'mobility', level: 'beginner' }
 };
@@ -366,7 +369,7 @@ const exerciseVariants = [
     instructions: { no: 'Grip stangen litt bredere enn skuldrene. Trekk den mot øvre bryst uten å lene deg langt bak, og strekk armene kontrollert opp.', en: 'Grip the bar slightly wider than shoulder-width. Pull toward your upper chest without leaning far back, then extend your arms with control.' }
   }),
   createVariant('lunges', {
-    id: 'step-up', name: { no: 'Oppsteg på lav kasse', en: 'Low Box Step-up' }, equipment: ['bodyweight'],
+    id: 'step-up', name: { no: 'Oppsteg på lav kasse', en: 'Low Box Step-up' }, equipment: ['bodyweight'], category: 'bodyweight',
     trainingModes: ['home-bodyweight', 'home-dumbbell', 'home-kettlebell', 'gym'], movementPattern: 'single-leg', level: 'beginner',
     description: { no: 'Kontrollert oppsteg på et stabilt, lavt trinn.', en: 'Controlled step-up onto a stable, low platform.' },
     instructions: { no: 'Sett hele foten på et lavt, stabilt trinn. Press gjennom foten for å komme opp, og gå rolig ned igjen.', en: 'Place your whole foot on a low, stable step. Press through that foot to rise, then step down slowly.' }
