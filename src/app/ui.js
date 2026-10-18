@@ -21,6 +21,7 @@ import {
   writeStoredHistory,
   STORAGE_KEY
 } from '../features/trainingLog.js';
+import { getWeeklyGuidelineStatus } from '../features/activityGuidelines.js';
 import { userHistory } from '../data/sampleHistory.js';
 
 const accountPage = new URLSearchParams(window.location.search).get('view') === 'account';
@@ -48,6 +49,7 @@ const progressFocus = document.getElementById('progress-focus');
 const latestWorkout = document.getElementById('latest-workout');
 const progressTrend = document.getElementById('progress-trend');
 const progressList = document.getElementById('progress-list');
+const weeklyGuidelineBadge = document.getElementById('weekly-guideline-badge');
 const logForm = document.getElementById('workout-log-form');
 const trainingModeSelect = document.getElementById('training-mode');
 const customEquipmentPanel = document.getElementById('custom-equipment-panel');
@@ -88,6 +90,14 @@ function syncEquipmentSelections(equipment) {
     .forEach((input) => {
       input.checked = equipment.includes(input.value);
     });
+}
+
+function todayLocalDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function setAccountStatus(message, isError = false) {
@@ -384,6 +394,9 @@ function renderProgress(history) {
     : latestSummary.label;
   progressTrend.textContent = summary.trendMessage;
 
+  const weeklyStatus = getWeeklyGuidelineStatus(history);
+  weeklyGuidelineBadge.textContent = weeklyStatus.isFullScore ? 'Godkjent uke' : 'Ikke godkjent uke';
+
   if (!summary.recentSessions.length) {
     progressList.innerHTML = '<li>Ingen treninger logget enda.</li>';
     return;
@@ -445,22 +458,22 @@ logForm.addEventListener('submit', (event) => {
   event.preventDefault();
 
   const formData = new FormData(logForm);
-  const selectedDate = formData.get('log-date') || new Date().toISOString().slice(0, 10);
+  const selectedDate = formData.get('log-date') || todayLocalDateString();
 
   workoutHistory = logWorkout(workoutHistory, {
     date: selectedDate,
     focus: formData.get('log-focus') || 'styrke',
     duration: Number(formData.get('log-duration')) || 30,
     load: Number(formData.get('log-load')) || 0,
-    performance: formData.get('log-performance') || 'good'
+    performance: formData.get('log-performance') || 'good',
+    intensity: formData.get('log-intensity') || 'medium'
   });
 
   writeStoredHistory(workoutHistory, historyStorageKey);
   void updateView();
   logForm.reset();
-  document.getElementById('log-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('log-date').value = todayLocalDateString();
 });
 
-const today = new Date().toISOString().slice(0, 10);
-document.getElementById('log-date').value = today;
+document.getElementById('log-date').value = todayLocalDateString();
 updateView();

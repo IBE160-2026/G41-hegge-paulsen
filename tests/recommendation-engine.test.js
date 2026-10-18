@@ -57,12 +57,25 @@ describe('Workout recommendation', () => {
       focus: 'styrke',
       duration: 35,
       load: 85,
-      performance: 'good'
+      performance: 'good',
+      intensity: 'high'
     });
 
     expect(result.length).toBe(3);
     expect(result[result.length - 1].focus).toBe('styrke');
     expect(result[result.length - 1].load).toBe(85);
+    expect(result[result.length - 1].intensity).toBe('high');
+  });
+
+  it('defaults a logged workout\'s intensity to null when omitted', () => {
+    const result = logWorkout([], {
+      focus: 'styrke',
+      duration: 35,
+      load: 85,
+      performance: 'good'
+    });
+
+    expect(result[result.length - 1].intensity).toBe(null);
   });
 
   it('summarizes recent progress from workout history', () => {

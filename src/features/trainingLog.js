@@ -15,6 +15,7 @@ export function logWorkout(history = [], workout = {}) {
     focus: workout.focus || 'styrke',
     energy: workout.energy || 'medium',
     load: Number(workout.load) || 0,
+    intensity: workout.intensity ?? null,
     completed: workout.completed !== false,
     performance: workout.performance || 'good',
     ...workout
