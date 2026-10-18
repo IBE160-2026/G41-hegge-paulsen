@@ -121,9 +121,13 @@ describe('Workout recommendation', () => {
   it('lists the main muscles engaged in each exercise', () => {
     const squat = exerciseData.find((exercise) => exercise.id === 'squat');
     const pushUp = exerciseData.find((exercise) => exercise.id === 'push-up');
+    const rowing = exerciseData.find((exercise) => exercise.id === 'rowing');
+    const cycling = exerciseData.find((exercise) => exercise.id === 'cycling');
 
     expect(squat.muscles).toContain('Ben');
     expect(pushUp.muscles).toContain('Bryst');
+    expect(rowing.muscles).toEqual(['Rygg', 'Armer', 'Skuldre']);
+    expect(cycling.muscles).toEqual(['Ben', 'Gluteus', 'Legger']);
   });
 
   it('prefers bodyweight strength moves for short and low-energy sessions', () => {
@@ -134,7 +138,23 @@ describe('Workout recommendation', () => {
       history: []
     });
 
-    expect(result.exercises.some((exercise) => exercise.toLowerCase().includes('armheving') || exercise.toLowerCase().includes('air squat'))).toBe(true);
+    expect(result.exercises.some((exercise) => exercise.toLowerCase().includes('armheving') || exercise.toLowerCase().includes('mini-knebøy'))).toBe(true);
+  });
+
+  it('picks the gentler bodyweight variant over its harder sibling for the same movement pattern when time is short or energy is low', () => {
+    const squatResult = getWorkoutSuggestion({
+      time: 15,
+      focus: 'styrke',
+      energy: 'low',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'intermediate'
+    });
+
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'air-squat')).toBe(true);
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'squat')).toBe(false);
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'step-up')).toBe(true);
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'lunges')).toBe(false);
   });
 
   it('explains why the recommendation fits the current session', () => {

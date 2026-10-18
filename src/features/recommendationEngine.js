@@ -46,6 +46,8 @@ function getExercisePlan(exercise, focus, time, energy) {
 }
 
 const levelRank = { beginner: 1, intermediate: 2, advanced: 3 };
+const difficultyRank = { easy: 0, medium: 1, hard: 2 };
+const easeScore = (exercise) => levelRank[exercise.level] * 10 + (difficultyRank[exercise.difficulty] ?? 1);
 const equipmentPreference = {
   'home-bodyweight': ['bodyweight'],
   'home-dumbbell': ['dumbbell', 'bodyweight'],
@@ -111,7 +113,9 @@ export function getWorkoutSuggestion({ time, focus, energy, history = [], traini
   }
 
   if (normalizedFocus === 'styrke' && (time <= 20 || energy === 'low')) {
-    const bodyweightExercises = availableExercises.filter((exercise) => exercise.category === 'bodyweight');
+    const bodyweightExercises = availableExercises
+      .filter((exercise) => exercise.category === 'bodyweight')
+      .sort((first, second) => easeScore(first) - easeScore(second));
     const equipmentExercises = availableExercises.filter((exercise) => exercise.category !== 'bodyweight');
     prioritizedExercises = [...bodyweightExercises, ...equipmentExercises];
   }
