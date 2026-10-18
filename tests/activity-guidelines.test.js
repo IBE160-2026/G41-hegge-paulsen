@@ -143,4 +143,18 @@ describe('getWeeklyGuidelineStatus', () => {
     expect(result.strengthDayCount).toBe(0);
     expect(result.isFullScore).toBe(false);
   });
+
+  it('does not throw and returns a safe all-false result when referenceDate is null or not a Date', () => {
+    const history = [
+      { date: '2026-01-01', focus: 'styrke', duration: 200, intensity: 'high', completed: true }
+    ];
+
+    expect(() => getWeeklyGuidelineStatus(history, null)).not.toThrow();
+
+    const result = getWeeklyGuidelineStatus(history, null);
+
+    expect(result.weightedMinutes).toBe(0);
+    expect(result.strengthDayCount).toBe(0);
+    expect(result.isFullScore).toBe(false);
+  });
 });

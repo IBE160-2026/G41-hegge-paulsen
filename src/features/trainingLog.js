@@ -4,12 +4,22 @@ function normalizeHistory(history = []) {
   return Array.isArray(history) ? history : [];
 }
 
+// Local calendar day (not UTC) so a default-dated entry agrees with
+// activityGuidelines.js's week-boundary math, which anchors on local "today".
+function todayLocalDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export function logWorkout(history = [], workout = {}) {
   const safeHistory = normalizeHistory(history);
 
   const nextEntry = {
     id: safeHistory.length + 1,
-    date: workout.date || new Date().toISOString().slice(0, 10),
+    date: workout.date || todayLocalDateString(),
     type: workout.type || workout.focus || 'strength',
     duration: Number(workout.duration) || 30,
     focus: workout.focus || 'styrke',

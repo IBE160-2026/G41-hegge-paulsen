@@ -78,6 +78,20 @@ describe('Workout recommendation', () => {
     expect(result[result.length - 1].intensity).toBe(null);
   });
 
+  it('defaults a logged workout\'s date to the local calendar day, not UTC', () => {
+    const now = new Date();
+    const expectedLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    const result = logWorkout([], {
+      focus: 'styrke',
+      duration: 35,
+      load: 85,
+      performance: 'good'
+    });
+
+    expect(result[result.length - 1].date).toBe(expectedLocalDate);
+  });
+
   it('summarizes recent progress from workout history', () => {
     const result = getProgressSummary([
       { date: '2026-09-28', focus: 'styrke', load: 80 },

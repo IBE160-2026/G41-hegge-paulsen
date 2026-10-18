@@ -39,7 +39,8 @@ function getISOWeekStart(referenceDate) {
 
 export function getWeeklyGuidelineStatus(history = [], referenceDate = new Date()) {
   const safeHistory = Array.isArray(history) ? history : [];
-  const weekStart = getISOWeekStart(referenceDate);
+  const safeReferenceDate = referenceDate instanceof Date ? referenceDate : new Date(NaN);
+  const weekStart = getISOWeekStart(safeReferenceDate);
 
   if (Number.isNaN(weekStart.getTime())) {
     return {
