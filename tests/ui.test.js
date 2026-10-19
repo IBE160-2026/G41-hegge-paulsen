@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STORAGE_KEY } from '../src/features/trainingLog.js';
 import { WEEKLY_PLAN_STORAGE_KEY } from '../src/features/weeklyPlan.js';
 
+const SUGGESTION_STORAGE_KEY = 'smartokt-current-suggestion';
+
 // Force the module-scope `supabase` client to null regardless of the machine's
 // own .env.local -- otherwise a dev with real Supabase credentials configured
 // (per docs/supabase-setup.md) would have this suite construct a live client
@@ -323,5 +325,166 @@ describe('ui.js elder (65+) weekly-guideline wiring (signed-in session)', () => 
       expect(document.getElementById('weekly-plan-list').textContent).toContain('marker-user1-plan');
     });
     expect(document.getElementById('weekly-plan-list').textContent).not.toContain('marker-guest-plan');
+  });
+});
+
+describe('ui.js chat input and suggestion-page wiring', () => {
+  const realLocation = window.location;
+
+  // jsdom's real `location.href` setter is a no-op (it only logs a "Not
+  // implemented: navigation" warning) and never actually updates
+  // `location.href`, so asserting the navigation itself requires a stub that
+  // does record the assignment. Scoped to individual tests (not every test in
+  // this block needs it) and restored in afterEach so the other tests here,
+  // which rely on real `window.history.pushState`-driven `location.search`,
+  // keep working.
+  function stubLocationHref() {
+    Object.defineProperty(window, 'location', {
+      value: { href: '', search: realLocation.search },
+      writable: true,
+      configurable: true
+    });
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.pushState({}, '', '/');
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    Object.defineProperty(window, 'location', { value: realLocation, writable: true, configurable: true });
+    window.history.pushState({}, '', '/');
+    // Restore the file-wide defaults so later tests (and re-imports) don't
+    // keep a signed-in Supabase client/profile mock from this block's tests.
+    vi.doMock('../src/features/supabaseClient.js', () => ({ supabase: null }));
+    vi.doUnmock('../src/features/supabaseAccount.js');
+  });
+
+  it('keeps the persisted suggestion on ?view=forslag even after a signed-in session resolves asynchronously', async () => {
+    const persistedSuggestion = {
+      title: 'Persistert testøkt',
+      exercises: [],
+      exerciseDetails: [],
+      duration: 42,
+      intensity: 'medium',
+      reason: 'marker-persisted-suggestion'
+    };
+    localStorage.setItem(SUGGESTION_STORAGE_KEY, JSON.stringify(persistedSuggestion));
+
+    vi.doMock('../src/features/supabaseClient.js', () => ({
+      supabase: {
+        auth: {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { id: 'user-1', email: 'a@b.no' } } },
+            error: null
+          }),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe() {} } } }))
+        }
+      }
+    }));
+
+    vi.doMock('../src/features/supabaseAccount.js', async () => {
+      const actual = await vi.importActual('../src/features/supabaseAccount.js');
+      return {
+        ...actual,
+        loadProfile: vi.fn().mockResolvedValue({
+          username: 'signed_in_user',
+          age: 40,
+          body_weight_kg: 80,
+          equipment: ['bodyweight']
+        })
+      };
+    });
+
+    window.history.pushState({}, '', '/?view=forslag');
+    await renderApp();
+
+    // Give applySession()'s async getSession()/loadProfile() chain -- and the
+    // void updateView() calls it triggers -- a chance to resolve and (if the
+    // guard regresses) clobber the persisted suggestion.
+    await vi.waitFor(() => {
+      expect(document.getElementById('account-status').textContent).toContain('Innlogget');
+    });
+
+    expect(document.getElementById('suggestion-title').textContent).toBe('Persistert testøkt');
+  });
+
+  it('persists the computed suggestion and navigates to ?view=forslag when #workout-form is submitted', async () => {
+    await renderApp();
+    stubLocationHref();
+
+    document.getElementById('workout-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+    await Promise.resolve();
+
+    const persisted = JSON.parse(localStorage.getItem(SUGGESTION_STORAGE_KEY));
+    expect(persisted.title).toBe('Styrkeøkt');
+    expect(persisted.exerciseDetails.length).toBeGreaterThan(0);
+    expect(window.location.href).toBe('?view=forslag');
+  });
+
+  it('parses free text from #chat-form, persists the equivalent suggestion, and navigates to ?view=forslag', async () => {
+    await renderApp();
+    stubLocationHref();
+
+    document.getElementById('chat-text').value = '20 min kondisjon i senteret';
+    document.getElementById('chat-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+    await Promise.resolve();
+
+    const persisted = JSON.parse(localStorage.getItem(SUGGESTION_STORAGE_KEY));
+    expect(persisted.title).toBe('Kondisjonsøkt');
+    expect(persisted.duration).toBe(20);
+    expect(window.location.href).toBe('?view=forslag');
+  });
+
+  it('never reads or writes the menu form\'s equipment/profile fields when the chat form is submitted', async () => {
+    await renderApp();
+
+    document.getElementById('chat-text').value = 'egendefinert med kettlebell';
+    document.getElementById('chat-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+    await Promise.resolve();
+
+    expect(localStorage.getItem('smartokt-user-profile')).toBeNull();
+    const persisted = JSON.parse(localStorage.getItem(SUGGESTION_STORAGE_KEY));
+    expect(persisted.availableEquipment).toEqual(['kettlebell']);
+  });
+
+  it('renders the persisted suggestion on a direct ?view=forslag visit, identical to its generated form', async () => {
+    await renderApp();
+
+    document.getElementById('workout-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+    await Promise.resolve();
+    const persisted = JSON.parse(localStorage.getItem(SUGGESTION_STORAGE_KEY));
+
+    window.history.pushState({}, '', '/?view=forslag');
+    await renderApp();
+
+    expect(document.getElementById('suggestion-title').textContent).toBe(persisted.title);
+    expect(document.body.classList.contains('suggestion-page')).toBe(true);
+  });
+
+  it('shows an empty/prompt state, not an error, on a bare ?view=forslag visit with nothing persisted', async () => {
+    window.history.pushState({}, '', '/?view=forslag');
+    await renderApp();
+
+    expect(document.getElementById('suggestion-title').textContent).not.toBe('Laster...');
+    expect(document.getElementById('suggestion-exercises').children.length).toBe(0);
+  });
+
+  it('shows "Tilbake til økt" with href="/" on the suggestion page, like the account page', async () => {
+    window.history.pushState({}, '', '/?view=forslag');
+    await renderApp();
+
+    const nav = document.getElementById('account-navigation');
+    expect(nav.textContent).toBe('Tilbake til økt');
+    expect(nav.getAttribute('href')).toBe('/');
   });
 });

@@ -1,4 +1,5 @@
 import { getWorkoutSuggestion } from '../features/recommendationEngine.js';
+import { parseWorkoutRequest } from '../features/chatParser.js';
 import { exerciseSources } from '../data/exerciseCatalog.js';
 import { profileEquipmentOptions, readUserProfile, writeUserProfile } from '../features/userProfile.js';
 import { supabase } from '../features/supabaseClient.js';
@@ -31,17 +32,45 @@ import {
 import { userHistory } from '../data/sampleHistory.js';
 
 const accountPage = new URLSearchParams(window.location.search).get('view') === 'account';
+const suggestionPage = new URLSearchParams(window.location.search).get('view') === 'forslag';
 const pageTitle = document.getElementById('page-title');
 const accountNavigation = document.getElementById('account-navigation');
 
 document.body.classList.toggle('account-page', accountPage);
-if (accountPage) {
-  pageTitle.textContent = 'Konto';
+document.body.classList.toggle('suggestion-page', suggestionPage);
+if (accountPage || suggestionPage) {
+  pageTitle.textContent = accountPage ? 'Konto' : 'Øktforslag';
   accountNavigation.href = '/';
   accountNavigation.textContent = 'Tilbake til økt';
 }
 
+// Local, ui.js-internal persistence for the generated suggestion -- mirrors
+// trainingLog.js's try/catch-around-localStorage pattern. Not exported:
+// nothing outside this file needs the current suggestion.
+const SUGGESTION_STORAGE_KEY = 'smartokt-current-suggestion';
+
+function readStoredSuggestion(storage = globalThis.localStorage) {
+  try {
+    const raw = storage.getItem(SUGGESTION_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeStoredSuggestion(suggestion, storage = globalThis.localStorage) {
+  try {
+    storage.setItem(SUGGESTION_STORAGE_KEY, JSON.stringify(suggestion));
+  } catch (error) {
+    // ignore storage failures in restricted environments
+  }
+
+  return suggestion;
+}
+
 const form = document.getElementById('workout-form');
+const chatForm = document.getElementById('chat-form');
+const chatText = document.getElementById('chat-text');
 const suggestionTitle = document.getElementById('suggestion-title');
 const suggestionExercises = document.getElementById('suggestion-exercises');
 const suggestionDuration = document.getElementById('suggestion-duration');
@@ -522,14 +551,48 @@ async function updateView() {
 
   const nextWeightSuggestion = suggestNextWeight(workoutHistory);
 
-  renderSuggestion(suggestion);
+  if (!suggestionPage) {
+    renderSuggestion(suggestion);
+  }
   renderNextWeight(nextWeightSuggestion);
   renderProgress(workoutHistory);
+
+  return suggestion;
+}
+
+function renderSuggestionEmptyState() {
+  suggestionTitle.textContent = 'Ingen øktforslag generert enda.';
+  suggestionExercises.innerHTML = '';
+  suggestionDuration.textContent = '';
+  suggestionIntensity.textContent = '';
+  suggestionNotes.textContent = 'Bruk menyen eller chatten på forsiden for å få et øktforslag.';
 }
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();
-  void updateView();
+  void (async () => {
+    const suggestion = await updateView();
+    writeStoredSuggestion(suggestion);
+    window.location.href = '?view=forslag';
+  })();
+});
+
+chatForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+
+  const parsedRequest = parseWorkoutRequest(chatText.value);
+  const suggestion = getWorkoutSuggestion({
+    time: parsedRequest.time,
+    focus: parsedRequest.focus,
+    energy: parsedRequest.energy,
+    trainingMode: parsedRequest.trainingMode,
+    level: parsedRequest.level,
+    availableEquipment: parsedRequest.equipment,
+    history: workoutHistory
+  });
+
+  writeStoredSuggestion(suggestion);
+  window.location.href = '?view=forslag';
 });
 
 logForm.addEventListener('submit', (event) => {
@@ -594,3 +657,16 @@ weeklyPlanForm.addEventListener('submit', (event) => {
 document.getElementById('log-date').value = todayLocalDateString();
 updateView();
 renderWeeklyPlan(weeklyPlan);
+
+// On the suggestion page (?view=forslag), replace whatever updateView() just
+// rendered (the menu form's current/default selections) with the actually
+// persisted suggestion -- or an empty/prompt state when nothing has been
+// persisted yet (e.g. a bare/bookmarked visit).
+if (suggestionPage) {
+  const storedSuggestion = readStoredSuggestion();
+  if (storedSuggestion) {
+    renderSuggestion(storedSuggestion);
+  } else {
+    renderSuggestionEmptyState();
+  }
+}

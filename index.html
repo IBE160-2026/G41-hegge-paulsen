@@ -134,7 +134,18 @@
         </form>
       </section>
 
-      <section id="results" class="result-grid">
+      <section id="chat-section" class="card chat-card">
+        <h2>Spør om en økt</h2>
+        <form id="chat-form" class="chat-form">
+          <div class="field-group">
+            <label for="chat-text">Beskriv økten med egne ord</label>
+            <input id="chat-text" name="chat-text" type="text" placeholder="F.eks. 30 min styrke, lite energi, hjemme med manualer, nybegynner" autocomplete="off" />
+          </div>
+          <button type="submit">Tolk teksten</button>
+        </form>
+      </section>
+
+      <section id="suggestion-page-section" class="result-grid">
         <article class="card result-card">
           <h2>Øktforslag</h2>
           <p id="suggestion-title" class="big-text">Laster...</p>
@@ -143,7 +154,9 @@
           <p id="suggestion-intensity" class="meta"></p>
           <p id="suggestion-notes" class="notes"></p>
         </article>
+      </section>
 
+      <section id="results" class="result-grid">
         <article class="card result-card">
           <h2>Neste vekt</h2>
           <p id="next-weight" class="big-text">Laster...</p>
