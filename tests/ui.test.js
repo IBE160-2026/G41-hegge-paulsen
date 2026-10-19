@@ -197,28 +197,25 @@ describe('ui.js weekly plan wiring', () => {
     expect(JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY)).days.length).toBe(6);
   });
 
-  it('reads live custom-equipment checkbox state, not stale userProfile, when generating without first submitting #workout-form', async () => {
+  it('uses a day-override row\'s own trainingMode and level, not the main menu\'s', async () => {
     await renderApp();
 
-    document.getElementById('training-mode').value = 'custom';
-    document.getElementById('training-mode').dispatchEvent(new Event('change', { bubbles: true }));
-    document.querySelectorAll('input[name="profile-equipment"]').forEach((input) => {
-      input.checked = input.value === 'kettlebell';
-    });
+    // Set the main menu to different values than the day-override row, to
+    // prove the weekly-plan path reads the row's own fields.
+    document.getElementById('training-mode').value = 'gym';
+    document.getElementById('level').value = 'advanced';
 
     document.getElementById('weekly-plan-days').value = '1';
+    document.getElementById('weekly-plan-days').dispatchEvent(new Event('change', { bubbles: true }));
+    document.querySelector('.weekly-plan-day-training-mode[data-day-index="0"]').value = 'home-kettlebell';
+    document.querySelector('.weekly-plan-day-level[data-day-index="0"]').value = 'beginner';
+
     document.getElementById('weekly-plan-form').dispatchEvent(
       new Event('submit', { bubbles: true, cancelable: true })
     );
-    await Promise.resolve();
 
     const plan = JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY));
-    expect(plan.days.length).toBe(1);
-    expect(plan.days[0].suggestion.availableEquipment).toEqual(['kettlebell']);
-    expect(plan.days[0].suggestion.exerciseDetails.length).toBeGreaterThan(0);
-    expect(plan.days[0].suggestion.exerciseDetails.every(
-      (exercise) => exercise.equipment.every((item) => item === 'kettlebell')
-    )).toBe(true);
+    expect(plan.days[0].suggestion.availableEquipment).toEqual(['kettlebell', 'bodyweight']);
   });
 
   it('generates and persists a weekly plan from free text via #weekly-plan-chat-form', async () => {
@@ -250,7 +247,8 @@ describe('ui.js weekly plan wiring', () => {
   it('renders one day-override row per day at load, matching the dropdown\'s default day count', async () => {
     await renderApp();
 
-    expect(document.querySelectorAll('#weekly-plan-day-overrides .weekly-plan-day-override').length).toBe(3);
+    const rows = document.querySelectorAll('#weekly-plan-day-overrides .weekly-plan-day-override:not(.weekly-plan-day-override-header)');
+    expect(rows.length).toBe(3);
   });
 
   it('rebuilds the day-override rows when the day-count dropdown changes', async () => {
@@ -259,7 +257,31 @@ describe('ui.js weekly plan wiring', () => {
     document.getElementById('weekly-plan-days').value = '5';
     document.getElementById('weekly-plan-days').dispatchEvent(new Event('change', { bubbles: true }));
 
-    expect(document.querySelectorAll('#weekly-plan-day-overrides .weekly-plan-day-override').length).toBe(5);
+    const rows = document.querySelectorAll('#weekly-plan-day-overrides .weekly-plan-day-override:not(.weekly-plan-day-override-header)');
+    expect(rows.length).toBe(5);
+  });
+
+  it('includes exactly one column-header row above the per-day override rows', async () => {
+    await renderApp();
+
+    expect(document.querySelectorAll('#weekly-plan-day-overrides .weekly-plan-day-override-header').length).toBe(1);
+  });
+
+  it('uses a day-override row\'s own trainingMode/level instead of the main menu\'s when #weekly-plan-form is submitted', async () => {
+    await renderApp();
+
+    document.querySelector('.weekly-plan-day-training-mode[data-day-index="0"]').value = 'gym';
+    document.querySelector('.weekly-plan-day-level[data-day-index="0"]').value = 'advanced';
+
+    document.getElementById('weekly-plan-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+
+    const plan = JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY));
+    // Gym mode's equipment-preference list is much longer than the
+    // 2-item home-dumbbell default -- a clear signal the row's own
+    // trainingMode was used, not the main menu's.
+    expect(plan.days[0].suggestion.availableEquipment.length).toBeGreaterThan(2);
   });
 
   it('uses a day-override row\'s focus instead of the automatic rotation when #weekly-plan-form is submitted', async () => {

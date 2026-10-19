@@ -5,6 +5,10 @@ export const WEEKLY_PLAN_STORAGE_KEY = 'smartokt-weekly-plan';
 const FOCUS_ROTATION = ['styrke', 'kondisjon', 'generell'];
 const VALID_FOCUSES = new Set(FOCUS_ROTATION);
 const VALID_ENERGIES = new Set(['low', 'medium', 'high']);
+// 'custom' is deliberately excluded: a per-day custom-equipment panel would
+// duplicate the shared equipment-checkbox UI across every day row.
+const VALID_TRAINING_MODES = new Set(['home-bodyweight', 'home-dumbbell', 'home-kettlebell', 'gym']);
+const VALID_LEVELS = new Set(['beginner', 'intermediate', 'advanced']);
 
 // Spreads `trainingDays` (clamped to 1-7) evenly across the ISO week
 // (1=Mon..7=Sun): for i in 0..N-1, isoWeekday = round((i + 0.5) * 7 / N).
@@ -53,13 +57,15 @@ export function getWeeklyPlan({
     const override = dayOverrides[i];
     const focus = VALID_FOCUSES.has(override?.focus) ? override.focus : getFocusForDayIndex(i);
     const dayEnergy = VALID_ENERGIES.has(override?.energy) ? override.energy : energy;
+    const dayTrainingMode = VALID_TRAINING_MODES.has(override?.trainingMode) ? override.trainingMode : trainingMode;
+    const dayLevel = VALID_LEVELS.has(override?.level) ? override.level : level;
     const suggestion = getWorkoutSuggestion({
       time,
       focus,
       energy: dayEnergy,
       history,
-      trainingMode,
-      level,
+      trainingMode: dayTrainingMode,
+      level: dayLevel,
       availableEquipment,
       excludeExerciseIds: [...excludeExerciseIds]
     });

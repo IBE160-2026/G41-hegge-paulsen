@@ -369,17 +369,24 @@ button:active {
   grid-column: 1 / -1;
   display: grid;
   gap: 10px;
+  overflow-x: auto;
 }
 
 .weekly-plan-day-override {
   display: grid;
-  grid-template-columns: 80px 1fr 1fr;
+  grid-template-columns: 80px repeat(4, minmax(140px, 1fr));
   gap: 10px;
   align-items: center;
 }
 
 .weekly-plan-day-override label {
   font-weight: 600;
+}
+
+.weekly-plan-day-override-header span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .weekly-plan-list {

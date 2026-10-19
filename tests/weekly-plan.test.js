@@ -219,6 +219,45 @@ describe('getWeeklyPlan', () => {
     expect(plan.days[2].focus).toBe('generell');
   });
 
+  it('uses a dayOverrides entry\'s trainingMode and level for that day instead of the week-wide values', () => {
+    const plan = getWeeklyPlan({
+      trainingDays: 2,
+      time: 30,
+      energy: 'medium',
+      level: 'intermediate',
+      trainingMode: 'home-dumbbell',
+      availableEquipment: [],
+      history: [],
+      dayOverrides: [
+        { focus: 'styrke', energy: 'medium', trainingMode: 'gym', level: 'advanced' }
+      ]
+    });
+
+    // Gym's equipment-preference list is much longer than home-dumbbell's
+    // 2-item default -- a clear signal the override's trainingMode was used.
+    expect(plan.days[0].suggestion.availableEquipment.length).toBeGreaterThan(2);
+    // Day 1 has no override entry -- falls back to the week-wide trainingMode.
+    expect(plan.days[1].suggestion.availableEquipment).toEqual(['dumbbell', 'bodyweight']);
+  });
+
+  it('falls back to the week-wide trainingMode/level for an invalid dayOverrides value (e.g. "custom")', () => {
+    const plan = getWeeklyPlan({
+      trainingDays: 1,
+      time: 30,
+      energy: 'medium',
+      level: 'intermediate',
+      trainingMode: 'home-dumbbell',
+      availableEquipment: [],
+      history: [],
+      dayOverrides: [{ focus: 'styrke', energy: 'medium', trainingMode: 'custom', level: 'not-a-real-level' }]
+    });
+
+    // 'custom' is not a valid per-day override (see VALID_TRAINING_MODES) --
+    // falls back to the week-wide home-dumbbell value, not an empty/invalid
+    // equipment list.
+    expect(plan.days[0].suggestion.availableEquipment).toEqual(['dumbbell', 'bodyweight']);
+  });
+
   it('behaves identically to omitting dayOverrides when it is an empty array (the default)', () => {
     const withoutOverrides = getWeeklyPlan({
       trainingDays: 3,

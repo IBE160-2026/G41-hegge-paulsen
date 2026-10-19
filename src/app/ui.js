@@ -633,27 +633,60 @@ const DAY_OVERRIDE_ENERGY_OPTIONS = [
   { value: 'high', label: 'Høy' }
 ];
 
+// 'custom' is deliberately excluded here too -- see the matching note in
+// weeklyPlan.js's VALID_TRAINING_MODES.
+const DAY_OVERRIDE_TRAINING_MODE_OPTIONS = [
+  { value: 'home-bodyweight', label: 'Hjemme / kroppsvekt' },
+  { value: 'home-dumbbell', label: 'Hjemme / manualer' },
+  { value: 'home-kettlebell', label: 'Hjemme / kettlebell' },
+  { value: 'gym', label: 'Senter / tyngre utstyr' }
+];
+
+const DAY_OVERRIDE_LEVEL_OPTIONS = [
+  { value: 'beginner', label: 'Nybegynner' },
+  { value: 'intermediate', label: 'Middels erfaring' },
+  { value: 'advanced', label: 'Erfaren' }
+];
+
 function buildDayOverrideOptions(options, selectedValue) {
   return options
     .map(({ value, label }) => `<option value="${value}" ${value === selectedValue ? 'selected' : ''}>${label}</option>`)
     .join('');
 }
 
-// Rebuilds the per-day focus/energy override rows whenever the day-count
-// dropdown changes, pre-filled with what the automatic rotation and the
-// main menu's current energy would already produce, so submitting without
-// touching any row still yields the same plan as before this feature existed.
+// Rebuilds the per-day override rows whenever the day-count dropdown changes.
+// Each row covers focus, energy, trainingMode and level -- all four fields
+// vary per day, not just energy -- pre-filled with what the automatic
+// rotation and the main menu's current values would already produce, so
+// submitting without touching any row still yields the same plan as before
+// this feature existed.
 function renderWeeklyPlanDayOverrides(dayCount) {
   const mainFormData = new FormData(form);
   const defaultEnergy = mainFormData.get('energy') || 'medium';
+  const defaultTrainingMode = mainFormData.get('trainingMode') || 'home-dumbbell';
+  const defaultLevel = mainFormData.get('level') || 'intermediate';
 
-  weeklyPlanDayOverrides.innerHTML = Array.from({ length: dayCount }, (_, i) => `
+  const header = `
+    <div class="weekly-plan-day-override weekly-plan-day-override-header">
+      <span></span>
+      <span>Fokus</span>
+      <span>Energinivå</span>
+      <span>Treningsoppsett</span>
+      <span>Treningsnivå</span>
+    </div>
+  `;
+
+  const rows = Array.from({ length: dayCount }, (_, i) => `
     <div class="weekly-plan-day-override">
       <label>Dag ${i + 1}</label>
       <select class="weekly-plan-day-focus" data-day-index="${i}">${buildDayOverrideOptions(DAY_OVERRIDE_FOCUS_OPTIONS, getFocusForDayIndex(i))}</select>
       <select class="weekly-plan-day-energy" data-day-index="${i}">${buildDayOverrideOptions(DAY_OVERRIDE_ENERGY_OPTIONS, defaultEnergy)}</select>
+      <select class="weekly-plan-day-training-mode" data-day-index="${i}">${buildDayOverrideOptions(DAY_OVERRIDE_TRAINING_MODE_OPTIONS, defaultTrainingMode)}</select>
+      <select class="weekly-plan-day-level" data-day-index="${i}">${buildDayOverrideOptions(DAY_OVERRIDE_LEVEL_OPTIONS, defaultLevel)}</select>
     </div>
   `).join('');
+
+  weeklyPlanDayOverrides.innerHTML = header + rows;
 }
 
 weeklyPlanDaysSelect.addEventListener('change', () => {
@@ -662,28 +695,25 @@ weeklyPlanDaysSelect.addEventListener('change', () => {
 
 renderWeeklyPlanDayOverrides(Number(weeklyPlanDaysSelect.value));
 
-async function generateWeeklyPlan() {
+// Focus, energy, trainingMode and level are all set per day via the
+// override rows (each pre-filled with a sensible default, so submitting
+// without touching any row reproduces the automatic rotation/main-menu
+// values). The week-wide `energy`/`trainingMode`/`level` params below are
+// only a fallback for a row somehow missing from the DOM; `time` has no
+// per-day equivalent and still comes from the main menu. Each row's
+// trainingMode deliberately excludes "custom" -- see the matching note on
+// weeklyPlan.js's VALID_TRAINING_MODES.
+function generateWeeklyPlan() {
   const mainFormData = new FormData(form);
   const weeklyPlanFormData = new FormData(weeklyPlanForm);
-  const selectedTrainingMode = mainFormData.get('trainingMode');
-  const selectedEquipment = mainFormData.getAll('profile-equipment');
 
-  if (selectedTrainingMode === 'custom') {
-    userProfile = writeUserProfile({ equipment: selectedEquipment });
-    if (currentUser && hasRemoteProfile) {
-      try {
-        await saveProfileEquipment(supabase, currentUser.id, userProfile.equipment);
-      } catch (error) {
-        setAccountStatus(`Kunne ikke synkronisere utstyrslisten: ${accountErrorMessage(error)}`, true);
-      }
-    } else if (currentUser) {
-      setAccountStatus('Lagre profilen din først for å synkronisere utstyrslisten til kontoen.');
-    }
-  }
-
-  const dayOverrides = Array.from(weeklyPlanDayOverrides.querySelectorAll('.weekly-plan-day-override')).map((row) => ({
+  const dayOverrides = Array.from(
+    weeklyPlanDayOverrides.querySelectorAll('.weekly-plan-day-override:not(.weekly-plan-day-override-header)')
+  ).map((row) => ({
     focus: row.querySelector('.weekly-plan-day-focus').value,
-    energy: row.querySelector('.weekly-plan-day-energy').value
+    energy: row.querySelector('.weekly-plan-day-energy').value,
+    trainingMode: row.querySelector('.weekly-plan-day-training-mode').value,
+    level: row.querySelector('.weekly-plan-day-level').value
   }));
 
   weeklyPlan = getWeeklyPlan({
@@ -691,7 +721,7 @@ async function generateWeeklyPlan() {
     time: Number(mainFormData.get('time')),
     energy: mainFormData.get('energy'),
     level: mainFormData.get('level'),
-    trainingMode: selectedTrainingMode,
+    trainingMode: mainFormData.get('trainingMode'),
     availableEquipment: userProfile.equipment,
     history: workoutHistory,
     dayOverrides
