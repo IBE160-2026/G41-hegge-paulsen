@@ -164,7 +164,8 @@ body.account-page #results,
 body.account-page #log-section,
 body.account-page #weekly-plan-section,
 body.account-page #chat-section,
-body.account-page #suggestion-page-section {
+body.account-page #suggestion-page-section,
+body.account-page #weekly-plan-page-section {
   display: none;
 }
 
@@ -181,7 +182,8 @@ body.suggestion-page #weekly-plan-section {
 
 body:not(.suggestion-page) #suggestion-page-section,
 body:not(.suggestion-page) #results,
-body:not(.suggestion-page) #log-section {
+body:not(.suggestion-page) #log-section,
+body:not(.suggestion-page) #weekly-plan-page-section {
   display: none;
 }
 
@@ -349,12 +351,35 @@ button:active {
   margin-top: 24px;
 }
 
+.weekly-plan-card h3 {
+  margin: 20px 0 10px;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
 .weekly-plan-form {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 16px;
   align-items: end;
   margin-bottom: 18px;
+}
+
+.weekly-plan-day-overrides {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+}
+
+.weekly-plan-day-override {
+  display: grid;
+  grid-template-columns: 80px 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.weekly-plan-day-override label {
+  font-weight: 600;
 }
 
 .weekly-plan-list {

@@ -152,7 +152,7 @@ describe('ui.js weekly plan wiring', () => {
     expect(items[0].className).toContain('weekly-plan-empty');
   });
 
-  it('generates and renders a plan with the requested number of distinct training days, and persists it', async () => {
+  it('persists a plan with the requested number of distinct training days when #weekly-plan-form is submitted', async () => {
     await renderApp();
 
     document.getElementById('weekly-plan-days').value = '4';
@@ -160,46 +160,40 @@ describe('ui.js weekly plan wiring', () => {
       new Event('submit', { bubbles: true, cancelable: true })
     );
 
-    const trainingDayItems = document.querySelectorAll('#weekly-plan-list li.weekly-plan-day:not(.weekly-plan-rest)');
-    const restDayItems = document.querySelectorAll('#weekly-plan-list li.weekly-plan-rest');
-    expect(trainingDayItems.length).toBe(4);
-    expect(restDayItems.length).toBe(3);
-
     const persisted = JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY));
     expect(persisted.days.length).toBe(4);
+    expect(new Set(persisted.days.map((day) => day.isoWeekday)).size).toBe(4);
   });
 
-  it('renders the previously persisted plan again after a reload, without regenerating', async () => {
+  it('renders the persisted plan on the suggestion page (?view=forslag), not inline on the landing page', async () => {
     await renderApp();
 
     document.getElementById('weekly-plan-days').value = '2';
     document.getElementById('weekly-plan-form').dispatchEvent(
       new Event('submit', { bubbles: true, cancelable: true })
     );
-    const persistedAfterGenerate = localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY);
 
+    window.history.pushState({}, '', '/?view=forslag');
     await renderApp();
 
     const trainingDayItems = document.querySelectorAll('#weekly-plan-list li.weekly-plan-day:not(.weekly-plan-rest)');
     expect(trainingDayItems.length).toBe(2);
-    expect(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY)).toBe(persistedAfterGenerate);
   });
 
-  it('overwrites the stored plan in the UI when the day count is changed and regenerated', async () => {
+  it('overwrites the stored plan when the day count is changed and regenerated', async () => {
     await renderApp();
 
     document.getElementById('weekly-plan-days').value = '1';
     document.getElementById('weekly-plan-form').dispatchEvent(
       new Event('submit', { bubbles: true, cancelable: true })
     );
-    expect(document.querySelectorAll('#weekly-plan-list li.weekly-plan-day:not(.weekly-plan-rest)').length).toBe(1);
+    expect(JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY)).days.length).toBe(1);
 
     document.getElementById('weekly-plan-days').value = '6';
     document.getElementById('weekly-plan-form').dispatchEvent(
       new Event('submit', { bubbles: true, cancelable: true })
     );
 
-    expect(document.querySelectorAll('#weekly-plan-list li.weekly-plan-day:not(.weekly-plan-rest)').length).toBe(6);
     expect(JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY)).days.length).toBe(6);
   });
 
@@ -235,9 +229,6 @@ describe('ui.js weekly plan wiring', () => {
       new Event('submit', { bubbles: true, cancelable: true })
     );
 
-    const trainingDayItems = document.querySelectorAll('#weekly-plan-list li.weekly-plan-day:not(.weekly-plan-rest)');
-    expect(trainingDayItems.length).toBe(3);
-
     const plan = JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY));
     expect(plan.days.length).toBe(3);
     expect(plan.days.every((day) => day.suggestion.availableEquipment.includes('dumbbell'))).toBe(true);
@@ -254,6 +245,37 @@ describe('ui.js weekly plan wiring', () => {
     expect(localStorage.getItem('smartokt-user-profile')).toBeNull();
     const plan = JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY));
     expect(plan.days[0].suggestion.availableEquipment).toEqual(['kettlebell']);
+  });
+
+  it('renders one day-override row per day at load, matching the dropdown\'s default day count', async () => {
+    await renderApp();
+
+    expect(document.querySelectorAll('#weekly-plan-day-overrides .weekly-plan-day-override').length).toBe(3);
+  });
+
+  it('rebuilds the day-override rows when the day-count dropdown changes', async () => {
+    await renderApp();
+
+    document.getElementById('weekly-plan-days').value = '5';
+    document.getElementById('weekly-plan-days').dispatchEvent(new Event('change', { bubbles: true }));
+
+    expect(document.querySelectorAll('#weekly-plan-day-overrides .weekly-plan-day-override').length).toBe(5);
+  });
+
+  it('uses a day-override row\'s focus instead of the automatic rotation when #weekly-plan-form is submitted', async () => {
+    await renderApp();
+
+    const firstDayFocusSelect = document.querySelector('#weekly-plan-day-overrides .weekly-plan-day-focus[data-day-index="0"]');
+    firstDayFocusSelect.value = 'kondisjon';
+
+    document.getElementById('weekly-plan-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+
+    const plan = JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY));
+    // Day 0's automatic rotation value would be 'styrke' -- the override row
+    // changes it to 'kondisjon'.
+    expect(plan.days[0].focus).toBe('kondisjon');
   });
 });
 

@@ -25,6 +25,7 @@ import {
 import { getWeeklyGuidelineStatus } from '../features/activityGuidelines.js';
 import {
   getWeeklyPlan,
+  getFocusForDayIndex,
   readStoredWeeklyPlan,
   writeStoredWeeklyPlan,
   WEEKLY_PLAN_STORAGE_KEY
@@ -87,6 +88,8 @@ const progressList = document.getElementById('progress-list');
 const weeklyGuidelineBadge = document.getElementById('weekly-guideline-badge');
 const logForm = document.getElementById('workout-log-form');
 const weeklyPlanForm = document.getElementById('weekly-plan-form');
+const weeklyPlanDaysSelect = document.getElementById('weekly-plan-days');
+const weeklyPlanDayOverrides = document.getElementById('weekly-plan-day-overrides');
 const weeklyPlanChatForm = document.getElementById('weekly-plan-chat-form');
 const weeklyPlanChatText = document.getElementById('weekly-plan-chat-text');
 const weeklyPlanList = document.getElementById('weekly-plan-list');
@@ -618,6 +621,47 @@ logForm.addEventListener('submit', (event) => {
   document.getElementById('log-date').value = todayLocalDateString();
 });
 
+const DAY_OVERRIDE_FOCUS_OPTIONS = [
+  { value: 'styrke', label: 'Styrke' },
+  { value: 'kondisjon', label: 'Kondisjon' },
+  { value: 'generell', label: 'Generell helse' }
+];
+
+const DAY_OVERRIDE_ENERGY_OPTIONS = [
+  { value: 'low', label: 'Lav' },
+  { value: 'medium', label: 'Middels' },
+  { value: 'high', label: 'Høy' }
+];
+
+function buildDayOverrideOptions(options, selectedValue) {
+  return options
+    .map(({ value, label }) => `<option value="${value}" ${value === selectedValue ? 'selected' : ''}>${label}</option>`)
+    .join('');
+}
+
+// Rebuilds the per-day focus/energy override rows whenever the day-count
+// dropdown changes, pre-filled with what the automatic rotation and the
+// main menu's current energy would already produce, so submitting without
+// touching any row still yields the same plan as before this feature existed.
+function renderWeeklyPlanDayOverrides(dayCount) {
+  const mainFormData = new FormData(form);
+  const defaultEnergy = mainFormData.get('energy') || 'medium';
+
+  weeklyPlanDayOverrides.innerHTML = Array.from({ length: dayCount }, (_, i) => `
+    <div class="weekly-plan-day-override">
+      <label>Dag ${i + 1}</label>
+      <select class="weekly-plan-day-focus" data-day-index="${i}">${buildDayOverrideOptions(DAY_OVERRIDE_FOCUS_OPTIONS, getFocusForDayIndex(i))}</select>
+      <select class="weekly-plan-day-energy" data-day-index="${i}">${buildDayOverrideOptions(DAY_OVERRIDE_ENERGY_OPTIONS, defaultEnergy)}</select>
+    </div>
+  `).join('');
+}
+
+weeklyPlanDaysSelect.addEventListener('change', () => {
+  renderWeeklyPlanDayOverrides(Number(weeklyPlanDaysSelect.value));
+});
+
+renderWeeklyPlanDayOverrides(Number(weeklyPlanDaysSelect.value));
+
 async function generateWeeklyPlan() {
   const mainFormData = new FormData(form);
   const weeklyPlanFormData = new FormData(weeklyPlanForm);
@@ -637,6 +681,11 @@ async function generateWeeklyPlan() {
     }
   }
 
+  const dayOverrides = Array.from(weeklyPlanDayOverrides.querySelectorAll('.weekly-plan-day-override')).map((row) => ({
+    focus: row.querySelector('.weekly-plan-day-focus').value,
+    energy: row.querySelector('.weekly-plan-day-energy').value
+  }));
+
   weeklyPlan = getWeeklyPlan({
     trainingDays: weeklyPlanFormData.get('trainingDays'),
     time: Number(mainFormData.get('time')),
@@ -644,11 +693,12 @@ async function generateWeeklyPlan() {
     level: mainFormData.get('level'),
     trainingMode: selectedTrainingMode,
     availableEquipment: userProfile.equipment,
-    history: workoutHistory
+    history: workoutHistory,
+    dayOverrides
   });
 
   writeStoredWeeklyPlan(weeklyPlan, weeklyPlanStorageKey);
-  renderWeeklyPlan(weeklyPlan);
+  window.location.href = '?view=forslag';
 }
 
 weeklyPlanForm.addEventListener('submit', (event) => {
@@ -672,7 +722,7 @@ weeklyPlanChatForm.addEventListener('submit', (event) => {
   });
 
   writeStoredWeeklyPlan(weeklyPlan, weeklyPlanStorageKey);
-  renderWeeklyPlan(weeklyPlan);
+  window.location.href = '?view=forslag';
 });
 
 document.getElementById('log-date').value = todayLocalDateString();

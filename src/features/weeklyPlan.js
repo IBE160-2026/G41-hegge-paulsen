@@ -3,6 +3,8 @@ import { getWorkoutSuggestion } from './recommendationEngine.js';
 export const WEEKLY_PLAN_STORAGE_KEY = 'smartokt-weekly-plan';
 
 const FOCUS_ROTATION = ['styrke', 'kondisjon', 'generell'];
+const VALID_FOCUSES = new Set(FOCUS_ROTATION);
+const VALID_ENERGIES = new Set(['low', 'medium', 'high']);
 
 // Spreads `trainingDays` (clamped to 1-7) evenly across the ISO week
 // (1=Mon..7=Sun): for i in 0..N-1, isoWeekday = round((i + 0.5) * 7 / N).
@@ -41,17 +43,20 @@ export function getWeeklyPlan({
   level,
   trainingMode,
   availableEquipment,
-  history = []
+  history = [],
+  dayOverrides = []
 }) {
   const assignedWeekdays = getAssignedWeekdays(trainingDays);
   const excludeExerciseIds = [];
 
   const days = assignedWeekdays.map((isoWeekday, i) => {
-    const focus = getFocusForDayIndex(i);
+    const override = dayOverrides[i];
+    const focus = VALID_FOCUSES.has(override?.focus) ? override.focus : getFocusForDayIndex(i);
+    const dayEnergy = VALID_ENERGIES.has(override?.energy) ? override.energy : energy;
     const suggestion = getWorkoutSuggestion({
       time,
       focus,
-      energy,
+      energy: dayEnergy,
       history,
       trainingMode,
       level,

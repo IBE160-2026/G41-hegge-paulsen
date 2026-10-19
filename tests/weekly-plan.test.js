@@ -153,6 +153,95 @@ describe('getWeeklyPlan', () => {
       expect(day.suggestion.reason).toContain('Velg minst ett');
     });
   });
+
+  it('uses a dayOverrides entry\'s focus for that day instead of the automatic rotation', () => {
+    const plan = getWeeklyPlan({
+      trainingDays: 2,
+      time: 30,
+      energy: 'medium',
+      level: 'intermediate',
+      trainingMode: 'home-dumbbell',
+      availableEquipment: [],
+      history: [],
+      dayOverrides: [{ focus: 'kondisjon', energy: 'medium' }]
+    });
+
+    // Day 0's automatic rotation value would be 'styrke' -- the override
+    // changes it to 'kondisjon'.
+    expect(plan.days[0].focus).toBe('kondisjon');
+    // Day 1 has no override entry -- falls back to the rotation's own
+    // day-1 value ('kondisjon').
+    expect(plan.days[1].focus).toBe('kondisjon');
+  });
+
+  it('uses a dayOverrides entry\'s energy for that day instead of the shared `energy` value', () => {
+    // Styrke's `sets` is energy-sensitive (2 low / 3 medium / 4 high) -- a
+    // more reliable observable than `intensity`, which only distinguishes
+    // energy levels for some time/focus combinations.
+    const baseline = getWeeklyPlan({
+      trainingDays: 1,
+      time: 30,
+      energy: 'medium',
+      level: 'intermediate',
+      trainingMode: 'home-dumbbell',
+      availableEquipment: [],
+      history: []
+    });
+    const overridden = getWeeklyPlan({
+      trainingDays: 1,
+      time: 30,
+      energy: 'medium',
+      level: 'intermediate',
+      trainingMode: 'home-dumbbell',
+      availableEquipment: [],
+      history: [],
+      dayOverrides: [{ focus: 'styrke', energy: 'high' }]
+    });
+
+    expect(baseline.days[0].suggestion.exerciseDetails[0].sets).toBe(3);
+    expect(overridden.days[0].suggestion.exerciseDetails[0].sets).toBe(4);
+  });
+
+  it('falls back to the automatic rotation/shared energy for any dayOverrides entry with an invalid or missing value', () => {
+    const plan = getWeeklyPlan({
+      trainingDays: 3,
+      time: 30,
+      energy: 'medium',
+      level: 'intermediate',
+      trainingMode: 'home-dumbbell',
+      availableEquipment: [],
+      history: [],
+      dayOverrides: [{ focus: 'not-a-real-focus', energy: 'not-a-real-energy' }, {}, undefined]
+    });
+
+    expect(plan.days[0].focus).toBe('styrke');
+    expect(plan.days[1].focus).toBe('kondisjon');
+    expect(plan.days[2].focus).toBe('generell');
+  });
+
+  it('behaves identically to omitting dayOverrides when it is an empty array (the default)', () => {
+    const withoutOverrides = getWeeklyPlan({
+      trainingDays: 3,
+      time: 30,
+      energy: 'medium',
+      level: 'intermediate',
+      trainingMode: 'home-dumbbell',
+      availableEquipment: [],
+      history: []
+    });
+    const withEmptyOverrides = getWeeklyPlan({
+      trainingDays: 3,
+      time: 30,
+      energy: 'medium',
+      level: 'intermediate',
+      trainingMode: 'home-dumbbell',
+      availableEquipment: [],
+      history: [],
+      dayOverrides: []
+    });
+
+    expect(withEmptyOverrides.days.map((day) => day.focus)).toEqual(withoutOverrides.days.map((day) => day.focus));
+  });
 });
 
 describe('weekly plan localStorage persistence', () => {
