@@ -143,4 +143,90 @@ describe('getWeeklyGuidelineStatus', () => {
     expect(result.strengthDayCount).toBe(0);
     expect(result.isFullScore).toBe(false);
   });
+
+  describe('elder (65+) balance/strength threshold', () => {
+    it('counts a styrke day plus a balanse day as 2 qualifying strength days for an elder user', () => {
+      const history = [
+        { date: '2026-10-13', focus: 'styrke', duration: 40, intensity: 'medium', completed: true },
+        { date: '2026-10-14', focus: 'balanse', duration: 40, intensity: 'medium', completed: true }
+      ];
+
+      const result = getWeeklyGuidelineStatus(history, REFERENCE_DATE, 70);
+
+      expect(result.strengthDayCount).toBe(2);
+      expect(result.strengthDaysRuleMet).toBe(true);
+    });
+
+    it('does not meet the rule for an elder user with only a single balanse day', () => {
+      const history = [
+        { date: '2026-10-13', focus: 'balanse', duration: 40, intensity: 'medium', completed: true }
+      ];
+
+      const result = getWeeklyGuidelineStatus(history, REFERENCE_DATE, 70);
+
+      expect(result.strengthDayCount).toBe(1);
+      expect(result.strengthDaysRuleMet).toBe(false);
+    });
+
+    it('does not count a balanse day toward the strength-day rule for a non-elder user', () => {
+      const history = [
+        { date: '2026-10-13', focus: 'styrke', duration: 40, intensity: 'medium', completed: true },
+        { date: '2026-10-14', focus: 'balanse', duration: 40, intensity: 'medium', completed: true }
+      ];
+
+      const result = getWeeklyGuidelineStatus(history, REFERENCE_DATE, 40);
+
+      expect(result.strengthDayCount).toBe(1);
+      expect(result.strengthDaysRuleMet).toBe(false);
+    });
+
+    it('applies the standard rule with no error when age is null (e.g. no synced profile)', () => {
+      const history = [
+        { date: '2026-10-13', focus: 'balanse', duration: 40, intensity: 'medium', completed: true }
+      ];
+
+      const result = getWeeklyGuidelineStatus(history, REFERENCE_DATE, null);
+
+      expect(result.strengthDayCount).toBe(0);
+      expect(result.strengthDaysRuleMet).toBe(false);
+    });
+
+    it('counts a same-day styrke + balanse pair as a single strength day for an elder user', () => {
+      const history = [
+        { date: '2026-10-13', focus: 'styrke', duration: 30, intensity: 'medium', completed: true },
+        { date: '2026-10-13', focus: 'balanse', duration: 20, intensity: 'medium', completed: true }
+      ];
+
+      const result = getWeeklyGuidelineStatus(history, REFERENCE_DATE, 70);
+
+      expect(result.strengthDayCount).toBe(1);
+      expect(result.strengthDaysRuleMet).toBe(false);
+    });
+
+    it.each([undefined, NaN, -5])('treats an invalid age value (%p) as non-elder without throwing', (invalidAge) => {
+      const history = [
+        { date: '2026-10-13', focus: 'balanse', duration: 40, intensity: 'medium', completed: true }
+      ];
+
+      expect(() => getWeeklyGuidelineStatus(history, REFERENCE_DATE, invalidAge)).not.toThrow();
+
+      const result = getWeeklyGuidelineStatus(history, REFERENCE_DATE, invalidAge);
+
+      expect(result.strengthDayCount).toBe(0);
+      expect(result.strengthDaysRuleMet).toBe(false);
+    });
+
+    it('still gates isFullScore on the minutes rule for an elder user with 2 qualifying days but low minutes', () => {
+      const history = [
+        { date: '2026-10-13', focus: 'styrke', duration: 10, intensity: 'medium', completed: true },
+        { date: '2026-10-14', focus: 'balanse', duration: 10, intensity: 'medium', completed: true }
+      ];
+
+      const result = getWeeklyGuidelineStatus(history, REFERENCE_DATE, 70);
+
+      expect(result.strengthDaysRuleMet).toBe(true);
+      expect(result.minutesRuleMet).toBe(false);
+      expect(result.isFullScore).toBe(false);
+    });
+  });
 });

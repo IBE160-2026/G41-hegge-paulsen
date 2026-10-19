@@ -131,3 +131,57 @@ describe('ui.js weekly-guideline wiring', () => {
     expect(persisted[persisted.length - 1].intensity).toBe('medium');
   });
 });
+
+describe('ui.js elder (65+) weekly-guideline wiring (signed-in session)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    // Restore the file-wide defaults so later tests (and re-imports) don't
+    // keep this test's signed-in Supabase client/profile mocks.
+    vi.doMock('../src/features/supabaseClient.js', () => ({ supabase: null }));
+    vi.doUnmock('../src/features/supabaseAccount.js');
+  });
+
+  it('badges a signed-in elder user\'s styrke+balanse week as "Godkjent uke"', async () => {
+    const [monday, tuesday] = currentIsoWeekDates(2);
+    const history = [
+      { id: 1, date: monday, focus: 'styrke', duration: 80, intensity: 'medium', completed: true },
+      { id: 2, date: tuesday, focus: 'balanse', duration: 80, intensity: 'medium', completed: true }
+    ];
+    localStorage.setItem(`${STORAGE_KEY}:user-1`, JSON.stringify(history));
+
+    vi.doMock('../src/features/supabaseClient.js', () => ({
+      supabase: {
+        auth: {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { id: 'user-1', email: 'a@b.no' } } },
+            error: null
+          }),
+          onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe() {} } } }))
+        }
+      }
+    }));
+
+    vi.doMock('../src/features/supabaseAccount.js', async () => {
+      const actual = await vi.importActual('../src/features/supabaseAccount.js');
+      return {
+        ...actual,
+        loadProfile: vi.fn().mockResolvedValue({
+          username: 'elder_user',
+          age: 70,
+          body_weight_kg: 70,
+          equipment: ['bodyweight']
+        })
+      };
+    });
+
+    await renderApp();
+
+    await vi.waitFor(() => {
+      expect(document.getElementById('weekly-guideline-badge').textContent).toBe('Godkjent uke');
+    });
+  });
+});

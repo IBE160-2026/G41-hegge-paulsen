@@ -72,6 +72,7 @@ let workoutHistory = readStoredHistory();
 let historyStorageKey = STORAGE_KEY;
 let userProfile = readUserProfile();
 let currentUser = null;
+let currentUserAge = null;
 let hasRemoteProfile = false;
 
 function renderEquipmentOptions(container, inputName, selectedEquipment) {
@@ -124,6 +125,7 @@ async function applySession(session) {
 
   if (!currentUser) {
     hasRemoteProfile = false;
+    currentUserAge = null;
     historyStorageKey = STORAGE_KEY;
     workoutHistory = readStoredHistory(historyStorageKey);
     if (!workoutHistory.length) {
@@ -150,6 +152,7 @@ async function applySession(session) {
     hasRemoteProfile = Boolean(profile);
     profileUsername.value = profile?.username || '';
     profileAge.value = profile?.age ?? '';
+    currentUserAge = profile?.age ?? null;
     profileBodyWeight.value = profile?.body_weight_kg ?? '';
     userProfile = writeUserProfile({ equipment: profile?.equipment || ['bodyweight', 'dumbbell'] });
     syncEquipmentSelections(userProfile.equipment);
@@ -158,6 +161,7 @@ async function applySession(session) {
       : `Innlogget som ${currentUser.email}. Fyll ut og lagre profilen for å synkronisere den.`);
     void updateView();
   } catch (error) {
+    currentUserAge = null;
     setAccountStatus(`Kunne ikke hente profilen: ${error.message}`, true);
     void updateView();
   }
@@ -278,6 +282,7 @@ accountProfileForm.addEventListener('submit', async (event) => {
     hasRemoteProfile = true;
     userProfile = writeUserProfile({ equipment: profile.equipment });
     profileAge.value = profile.age ?? '';
+    currentUserAge = profile.age ?? null;
     profileBodyWeight.value = profile.body_weight_kg ?? '';
     syncEquipmentSelections(userProfile.equipment);
     setAccountStatus('Profilen er lagret og synkronisert.');
@@ -394,7 +399,7 @@ function renderProgress(history) {
     : latestSummary.label;
   progressTrend.textContent = summary.trendMessage;
 
-  const weeklyStatus = getWeeklyGuidelineStatus(history);
+  const weeklyStatus = getWeeklyGuidelineStatus(history, new Date(), currentUserAge);
   weeklyGuidelineBadge.textContent = weeklyStatus.isFullScore ? 'Godkjent uke' : 'Ikke godkjent uke';
 
   if (!summary.recentSessions.length) {

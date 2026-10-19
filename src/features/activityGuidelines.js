@@ -37,8 +37,9 @@ function getISOWeekStart(referenceDate) {
   return dayStart;
 }
 
-export function getWeeklyGuidelineStatus(history = [], referenceDate = new Date()) {
+export function getWeeklyGuidelineStatus(history = [], referenceDate = new Date(), age = null) {
   const safeHistory = Array.isArray(history) ? history : [];
+  const isElder = Number.isFinite(age) && age >= 65;
   const weekStart = getISOWeekStart(referenceDate);
 
   if (Number.isNaN(weekStart.getTime())) {
@@ -70,7 +71,8 @@ export function getWeeklyGuidelineStatus(history = [], referenceDate = new Date(
       weightedMinutes += duration * weight;
     }
 
-    if (entry.focus === 'styrke') {
+    const qualifiesAsStrengthDay = entry.focus === 'styrke' || (isElder && entry.focus === 'balanse');
+    if (qualifiesAsStrengthDay) {
       strengthDays.add(entryDate.toISOString().slice(0, 10));
     }
   }
