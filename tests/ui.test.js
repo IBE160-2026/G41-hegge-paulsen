@@ -226,6 +226,35 @@ describe('ui.js weekly plan wiring', () => {
       (exercise) => exercise.equipment.every((item) => item === 'kettlebell')
     )).toBe(true);
   });
+
+  it('generates and persists a weekly plan from free text via #weekly-plan-chat-form', async () => {
+    await renderApp();
+
+    document.getElementById('weekly-plan-chat-text').value = 'tre økter denne uken, hjemme med manualer, nybegynner';
+    document.getElementById('weekly-plan-chat-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+
+    const trainingDayItems = document.querySelectorAll('#weekly-plan-list li.weekly-plan-day:not(.weekly-plan-rest)');
+    expect(trainingDayItems.length).toBe(3);
+
+    const plan = JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY));
+    expect(plan.days.length).toBe(3);
+    expect(plan.days.every((day) => day.suggestion.availableEquipment.includes('dumbbell'))).toBe(true);
+  });
+
+  it('never reads or writes the menu form\'s equipment/profile fields when the weekly-plan chat form is submitted', async () => {
+    await renderApp();
+
+    document.getElementById('weekly-plan-chat-text').value = 'egendefinert med kettlebell';
+    document.getElementById('weekly-plan-chat-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+
+    expect(localStorage.getItem('smartokt-user-profile')).toBeNull();
+    const plan = JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY));
+    expect(plan.days[0].suggestion.availableEquipment).toEqual(['kettlebell']);
+  });
 });
 
 describe('ui.js elder (65+) weekly-guideline wiring (signed-in session)', () => {

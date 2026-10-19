@@ -1,5 +1,5 @@
 import { getWorkoutSuggestion } from '../features/recommendationEngine.js';
-import { parseWorkoutRequest } from '../features/chatParser.js';
+import { parseWorkoutRequest, parseWeeklyPlanRequest } from '../features/chatParser.js';
 import { exerciseSources } from '../data/exerciseCatalog.js';
 import { profileEquipmentOptions, readUserProfile, writeUserProfile } from '../features/userProfile.js';
 import { supabase } from '../features/supabaseClient.js';
@@ -87,6 +87,8 @@ const progressList = document.getElementById('progress-list');
 const weeklyGuidelineBadge = document.getElementById('weekly-guideline-badge');
 const logForm = document.getElementById('workout-log-form');
 const weeklyPlanForm = document.getElementById('weekly-plan-form');
+const weeklyPlanChatForm = document.getElementById('weekly-plan-chat-form');
+const weeklyPlanChatText = document.getElementById('weekly-plan-chat-text');
 const weeklyPlanList = document.getElementById('weekly-plan-list');
 const trainingModeSelect = document.getElementById('training-mode');
 const customEquipmentPanel = document.getElementById('custom-equipment-panel');
@@ -652,6 +654,25 @@ async function generateWeeklyPlan() {
 weeklyPlanForm.addEventListener('submit', (event) => {
   event.preventDefault();
   void generateWeeklyPlan();
+});
+
+weeklyPlanChatForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+
+  const parsedRequest = parseWeeklyPlanRequest(weeklyPlanChatText.value);
+
+  weeklyPlan = getWeeklyPlan({
+    trainingDays: parsedRequest.trainingDays,
+    time: parsedRequest.time,
+    energy: parsedRequest.energy,
+    level: parsedRequest.level,
+    trainingMode: parsedRequest.trainingMode,
+    availableEquipment: parsedRequest.equipment,
+    history: workoutHistory
+  });
+
+  writeStoredWeeklyPlan(weeklyPlan, weeklyPlanStorageKey);
+  renderWeeklyPlan(weeklyPlan);
 });
 
 document.getElementById('log-date').value = todayLocalDateString();

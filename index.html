@@ -230,9 +230,25 @@
         <form id="weekly-plan-form" class="weekly-plan-form">
           <div class="field-group">
             <label for="weekly-plan-days">Antall treningsdager denne uken</label>
-            <input id="weekly-plan-days" name="trainingDays" type="number" min="1" max="7" value="3" />
+            <select id="weekly-plan-days" name="trainingDays">
+              <option value="1">1 dag</option>
+              <option value="2">2 dager</option>
+              <option value="3" selected>3 dager</option>
+              <option value="4">4 dager</option>
+              <option value="5">5 dager</option>
+              <option value="6">6 dager</option>
+              <option value="7">7 dager</option>
+            </select>
           </div>
 
+          <button type="submit">Få ukeplan basert på dine mål for kommende uke</button>
+        </form>
+
+        <form id="weekly-plan-chat-form" class="weekly-plan-form">
+          <div class="field-group">
+            <label for="weekly-plan-chat-text">Eller beskriv uken med egne ord</label>
+            <input id="weekly-plan-chat-text" name="weekly-plan-chat-text" type="text" placeholder="F.eks. tre økter denne uken, hjemme med manualer, nybegynner" autocomplete="off" />
+          </div>
           <button type="submit">Få ukeplan basert på dine mål for kommende uke</button>
         </form>
 

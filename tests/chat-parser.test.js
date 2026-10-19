@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseWorkoutRequest } from '../src/features/chatParser.js';
+import { parseWorkoutRequest, parseWeeklyPlanRequest } from '../src/features/chatParser.js';
 
 describe('parseWorkoutRequest', () => {
   it('recognizes every field from a full Norwegian sentence', () => {
@@ -152,5 +152,40 @@ describe('parseWorkoutRequest', () => {
 
     expect(result.trainingMode).toBe('custom');
     expect(result.equipment).toEqual(['dumbbell']);
+  });
+});
+
+describe('parseWeeklyPlanRequest', () => {
+  it('recognizes a digit day count plus the other menu fields', () => {
+    const result = parseWeeklyPlanRequest('3 økter denne uken, hjemme med manualer, nybegynner');
+
+    expect(result.trainingDays).toBe(3);
+    expect(result.trainingMode).toBe('home-dumbbell');
+    expect(result.level).toBe('beginner');
+  });
+
+  it('recognizes a Norwegian number word for the day count', () => {
+    expect(parseWeeklyPlanRequest('tre økter denne uken').trainingDays).toBe(3);
+    expect(parseWeeklyPlanRequest('fem dager på senteret').trainingDays).toBe(5);
+  });
+
+  it('defaults the day count to 3 (matching the dropdown\'s own default) when none is recognized', () => {
+    expect(parseWeeklyPlanRequest('').trainingDays).toBe(3);
+    expect(parseWeeklyPlanRequest('hjemme med manualer').trainingDays).toBe(3);
+  });
+
+  it('does not false-positive the number word "to" inside an unrelated word', () => {
+    expect(parseWeeklyPlanRequest('jeg liker tomatsuppe').trainingDays).toBe(3);
+  });
+
+  it('does not include a focus field -- the weekly plan always assigns focus per day via its own rotation', () => {
+    const result = parseWeeklyPlanRequest('styrke denne uken');
+
+    expect(result.focus).toBeUndefined();
+    expect(result.trainingDays).toBe(3);
+  });
+
+  it('clamps an out-of-range digit day count (e.g. "9 dager") back to the default rather than passing it through', () => {
+    expect(parseWeeklyPlanRequest('9 dager denne uken').trainingDays).toBe(3);
   });
 });

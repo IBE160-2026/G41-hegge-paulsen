@@ -129,3 +129,56 @@ export function parseWorkoutRequest(text = '') {
     equipment: parseEquipment(safeText, lowerText, trainingMode)
   };
 }
+
+// Matches the #weekly-plan-form dropdown's own default (3) when the text
+// names no day count at all.
+const DEFAULT_TRAINING_DAYS = 3;
+
+const DAY_COUNT_PATTERN = /(\d)\s*(dager|dag|økter|økt|ganger|gang)/i;
+
+// Word -> day count, for text that spells the number out instead of using a
+// digit (e.g. "tre økter" rather than "3 økter"). Matched with \b so e.g.
+// "to" (two) never false-positives inside an unrelated longer word.
+const DAY_COUNT_WORDS = [
+  { word: 'en', count: 1 },
+  { word: 'én', count: 1 },
+  { word: 'ett', count: 1 },
+  { word: 'to', count: 2 },
+  { word: 'tre', count: 3 },
+  { word: 'fire', count: 4 },
+  { word: 'fem', count: 5 },
+  { word: 'seks', count: 6 },
+  { word: 'syv', count: 7 },
+  { word: 'sju', count: 7 }
+];
+
+function parseTrainingDays(text) {
+  const digitMatch = DAY_COUNT_PATTERN.exec(text);
+  if (digitMatch) {
+    const value = Number(digitMatch[1]);
+    if (Number.isFinite(value) && value >= 1 && value <= 7) return value;
+  }
+
+  const lowerText = text.toLowerCase();
+  for (const { word, count } of DAY_COUNT_WORDS) {
+    if (new RegExp(`\\b${word}\\b`, 'i').test(lowerText)) return count;
+  }
+
+  return DEFAULT_TRAINING_DAYS;
+}
+
+// Weekly-plan requests reuse parseWorkoutRequest for every field except
+// `focus` -- the weekly plan always assigns focus per day via its own fixed
+// rotation (getFocusForDayIndex in weeklyPlan.js), so a focus word in the
+// text would otherwise contradict the point of a varied week and is
+// deliberately ignored here. `trainingDays` is parsed in addition, not by
+// parseWorkoutRequest, since it only matters for a multi-day request.
+export function parseWeeklyPlanRequest(text = '') {
+  const safeText = typeof text === 'string' ? text : '';
+  const { focus, ...rest } = parseWorkoutRequest(safeText);
+
+  return {
+    trainingDays: parseTrainingDays(safeText),
+    ...rest
+  };
+}
