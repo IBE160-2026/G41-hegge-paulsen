@@ -5,7 +5,10 @@ SmartØkt er et gruppeprosjekt i IBE160 Programmering med KI ved Høgskolen i Mo
 Prosjektet bygger en enkel treningsapp som gir brukeren et målrettet øktforslag basert på tilgjengelig tid, fokus, energinivå, historikk og progressjon.
 
 ## Hva appen gjør nå
-- genererer øktforslag etter valg av tid, fokus og energi
+- genererer øktforslag etter valg av tid, fokus og energi — enten via menyen eller ved å beskrive økten med egne ord i en enkel regelbasert chat (ingen ekstern AI-API)
+- viser øktforslaget på en egen side, separat fra valgsiden
+- genererer en ukeplan (flere dager i uken) via meny eller chat, med mulighet for å overstyre fokus/energi/treningsoppsett/treningsnivå for hver dag
+- vurderer uken mot Helsedirektoratets aktivitetsråd, inkludert 65+-regelen for balanse- og styrketrening for innloggede brukere med alder i profilen
 - lar brukeren registrere/logge inn via Supabase og lagre profil, dersom Supabase er konfigurert
 - bruker lokal historikk som fallback-data
 - foreslår neste belastning
@@ -13,8 +16,8 @@ Prosjektet bygger en enkel treningsapp som gir brukeren et målrettet øktforsla
 - kan kjøres lokalt uten eksterne API-nøkler i MVP
 
 ## Kort oppsummert MVP-flyt
-1. Bruker velger tid, fokus og energinivå
-2. Appen foreslår en økt
+1. Bruker velger tid, fokus og energinivå — via menyen eller chatten
+2. Appen foreslår en økt (eller en ukeplan), vist på en egen side
 3. Bruker logger treningen
 4. Appen oppdaterer historikk og progresjon
 5. Appen anbefaler neste belastning
@@ -73,4 +76,4 @@ npm test
 - build-artefakter og avhengigheter er ignorert via `.gitignore`
 
 ## Status
-Prosjektet er i aktiv utvikling, og fokuset er nå på å gjøre MVP-flyten tydelig, brukbar og godt dokumentert.
+Prosjektet er i aktiv utvikling. MVP-kjerneflyten fungerer, og flere post-MVP-funksjoner (ukeplan, chat-input, egen forslagsside, 65+-aktivitetsregel) er lagt til. Se [docs/mvp-status.md](docs/mvp-status.md) for detaljert status og neste steg.
