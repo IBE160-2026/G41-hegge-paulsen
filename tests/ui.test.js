@@ -561,3 +561,77 @@ describe('ui.js chat input and suggestion-page wiring', () => {
     expect(nav.getAttribute('href')).toBe('/');
   });
 });
+
+describe('ui.js applySession race protection', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    localStorage.clear();
+    vi.doMock('../src/features/supabaseClient.js', () => ({ supabase: null }));
+    vi.doUnmock('../src/features/supabaseAccount.js');
+  });
+
+  it('does not let a slow, late-resolving session fetch overwrite a newer session that already finished', async () => {
+    let resolveFirstProfile;
+    let resolveSecondProfile;
+    const firstProfilePromise = new Promise((resolve) => {
+      resolveFirstProfile = resolve;
+    });
+    const secondProfilePromise = new Promise((resolve) => {
+      resolveSecondProfile = resolve;
+    });
+    const loadProfileMock = vi.fn()
+      .mockReturnValueOnce(firstProfilePromise)
+      .mockReturnValueOnce(secondProfilePromise);
+
+    let capturedAuthChangeCallback;
+    vi.doMock('../src/features/supabaseClient.js', () => ({
+      supabase: {
+        auth: {
+          getSession: vi.fn().mockResolvedValue({
+            data: { session: { user: { id: 'user-a', email: 'a@old.no' } } },
+            error: null
+          }),
+          onAuthStateChange: vi.fn((callback) => {
+            capturedAuthChangeCallback = callback;
+            return { data: { subscription: { unsubscribe() {} } } };
+          })
+        }
+      }
+    }));
+
+    vi.doMock('../src/features/supabaseAccount.js', async () => {
+      const actual = await vi.importActual('../src/features/supabaseAccount.js');
+      return { ...actual, loadProfile: loadProfileMock };
+    });
+
+    await renderApp();
+    // Let the initial getSession()-triggered applySession(user-a) start and
+    // reach its loadProfile await.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Simulate a second session change (user-b) -- e.g. a sign-out/sign-in,
+    // or a token refresh -- while user-a's fetch is still in flight. The real
+    // onAuthStateChange handler wraps its call in a setTimeout(...,0).
+    capturedAuthChangeCallback('SIGNED_IN', { user: { id: 'user-b', email: 'b@new.no' } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Resolve user-b's (the newer call's) fetch first.
+    resolveSecondProfile({ username: 'user_b', age: 40, body_weight_kg: 70, equipment: ['bodyweight'] });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Then resolve user-a's (the older, now-stale call's) fetch.
+    resolveFirstProfile({ username: 'user_a', age: 99, body_weight_kg: 50, equipment: ['bodyweight'] });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // The stale user-a fetch resolving last must not overwrite the current
+    // (user-b) session's state.
+    expect(document.getElementById('account-status').textContent).toContain('b@new.no');
+    expect(document.getElementById('profile-username').value).toBe('user_b');
+  });
+});

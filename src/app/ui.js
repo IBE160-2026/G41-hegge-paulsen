@@ -160,7 +160,15 @@ function updateCustomEquipmentVisibility() {
 trainingModeSelect.addEventListener('change', updateCustomEquipmentVisibility);
 updateCustomEquipmentVisibility();
 
+// Incremented at the start of every applySession call; a call checks this
+// after its one await point and bails out if a newer call has since started,
+// so a slow/late-resolving loadProfile fetch can never overwrite state a
+// newer call already set (e.g. sign-out firing, or a token refresh, while an
+// earlier fetch is still in flight).
+let sessionRequestId = 0;
+
 async function applySession(session) {
+  const requestId = ++sessionRequestId;
   currentUser = session?.user || null;
   accountAuthForm.hidden = Boolean(currentUser);
   accountProfileForm.hidden = !currentUser;
@@ -199,6 +207,7 @@ async function applySession(session) {
 
   try {
     const profile = await loadProfile(supabase, currentUser.id);
+    if (requestId !== sessionRequestId) return;
     hasRemoteProfile = Boolean(profile);
     profileUsername.value = profile?.username || '';
     profileAge.value = profile?.age ?? '';
@@ -211,6 +220,7 @@ async function applySession(session) {
       : `Innlogget som ${currentUser.email}. Fyll ut og lagre profilen for å synkronisere den.`);
     void updateView();
   } catch (error) {
+    if (requestId !== sessionRequestId) return;
     currentUserAge = null;
     setAccountStatus(`Kunne ikke hente profilen: ${error.message}`, true);
     void updateView();
