@@ -32,13 +32,12 @@ Moving the result to its own page reuses the exact mechanism the account page al
 - Submitting either `#workout-form` or the new chat form: compute the suggestion, persist it via a new local (not exported, ui.js-internal) `localStorage` read/write pair under a new key, then navigate with `window.location.href = '?view=forslag'` -- a real navigation, matching the account-page link's existing behavior, not a `pushState`/in-place DOM swap.
 - On `?view=forslag` load: read the persisted suggestion and render it with the existing `renderSuggestion`/`getDisplayExerciseDetails`/`renderExerciseListItems` functions, unchanged. If nothing is persisted yet (e.g. a bare/bookmarked `?view=forslag` visit), show an empty/prompt state in the result card instead of erroring (mirroring the weekly-plan section's existing empty-state convention).
 - The existing `#account-navigation` link's toggle logic extends to cover the new page the same way it already covers the account page: show "Tilbake til økt" / `href="/"` when on `?view=forslag` OR `?view=account`, "Konto" / `href="?view=account"` otherwise.
-- `#results` keeps the next-weight and progress/weekly-guideline cards; only the suggestion card (`#suggestion-title`/`#suggestion-exercises`/etc.) moves into its own new section.
+- **(Renegotiated 2026-10-19, see Spec Change Log)** The landing page (plain, no `?view=`) shows only the account panel, the menu form, and the chat section. Every other section -- the suggestion card, `#results` (next-weight + progress/weekly-guideline), the log form, and the weekly-plan section -- is visible only on `?view=forslag`. This is a CSS-only reorganization (`body:not(.suggestion-page)` hides those four sections, `body.suggestion-page` hides the account panel/menu/chat instead); no change to the JS that renders any of them.
 
 **Never:**
 - Do not call any external AI/LLM API or add a new dependency for natural-language parsing -- keyword/pattern matching only.
 - Do not make the chat form read or write `userProfile`'s equipment, call `saveProfileEquipment`, or otherwise touch the menu form's own fields/checkboxes -- for `trainingMode: 'custom'`, use only equipment the parser itself recognized in the text (empty list if none, which already degrades gracefully via `getWorkoutSuggestion`'s existing "no equipment selected" message).
 - Do not change `getWorkoutSuggestion`'s signature or logic -- both input paths call it exactly as it exists today.
-- Do not move the next-weight or progress/weekly-guideline cards, the log form, or the weekly-plan section to the new page.
 
 ## I/O & Edge-Case Matrix
 
@@ -82,7 +81,7 @@ Moving the result to its own page reuses the exact mechanism the account page al
 - Given the menu form is submitted, when the suggestion is computed, then the browser navigates to `?view=forslag` and the suggestion renders there (not inline on the landing page).
 - Given `?view=forslag` is visited directly with a previously persisted suggestion, when the page loads, then that suggestion renders without needing to resubmit either form.
 - Given `?view=forslag` is visited with nothing persisted, when the page loads, then an empty/prompt state renders, not an error.
-- Given the account page (`?view=account`) or the plain landing page, when either loads, then the new chat section and the new suggestion-page section are each visible on exactly one of the three page states (landing: chat only; forslag: suggestion only; account: neither).
+- Given the account page (`?view=account`), the plain landing page, or `?view=forslag`, when any loads, then each section is visible on exactly the right page state (landing: account panel, menu, chat only; forslag: suggestion, next-weight/progress, log form, weekly plan; account: neither group).
 
 ## Implementation Notes
 
@@ -112,6 +111,7 @@ Moving the result to its own page reuses the exact mechanism the account page al
 
 ## Spec Change Log
 
+- Human renegotiation (2026-10-19): originally the Boundaries said only the suggestion card moves to `?view=forslag`, with `#results`/the log form/the weekly-plan section staying on the landing page. The human asked directly to narrow the landing page to just the account panel, the menu, and the chat section, moving everything else -- `#results`, `#log-section`, and `#weekly-plan-section` -- to the suggestion page alongside the suggestion card. Implemented as a CSS-only change in `src/app/styles.css`: moved those three sections out of `body.suggestion-page`'s hide-list and into a new `body:not(.suggestion-page)` hide-list alongside `#suggestion-page-section`; added the account panel and menu to `body.suggestion-page`'s hide-list (the chat section was already there). No `index.html` or `ui.js` change was needed -- every section's rendering logic already runs regardless of which page is visible; only visibility changed. Verified: full test suite (118/118) and production build both still pass; no existing test asserts on these elements' CSS visibility, so none needed updating.
 - Corrected the frozen I/O matrix's `"egendefinert med kettlebell og manualer"` row: `equipment` changes from `['kettlebell', 'dumbbell']` (text-mention order) to `['dumbbell', 'kettlebell']` (`profileEquipmentOptions`'s declared order). The original value was never renegotiated by a human; it's corrected in-place because it directly conflicted with this same spec's own Acceptance Criteria ("the resulting suggestion matches what the menu form would produce for the equivalent explicit selections") once the order-sensitivity of `getWorkoutSuggestion`'s custom-mode selection was verified -- leaving exactly one sensible reading, the same exception used for the arithmetic/prose corrections in `spec-weekly-training-plan.md`. KEEP: every other I/O-matrix row, the equipment-gated-on-custom-mode design, and the rest of the parser's keyword tables were all independently verified correct and unaffected.
 
 ## Verification
