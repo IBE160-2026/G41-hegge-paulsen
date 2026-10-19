@@ -76,6 +76,31 @@ describe('getWeeklyGuidelineStatus', () => {
     expect(result.isFullScore).toBe(true);
   });
 
+  it('returns isFullScore false when only the minutes rule is met (strength-day rule unmet)', () => {
+    const history = [
+      { date: '2026-10-13', focus: 'kondisjon', duration: 150, intensity: 'medium', completed: true }
+    ];
+
+    const result = getWeeklyGuidelineStatus(history, REFERENCE_DATE);
+
+    expect(result.minutesRuleMet).toBe(true);
+    expect(result.strengthDaysRuleMet).toBe(false);
+    expect(result.isFullScore).toBe(false);
+  });
+
+  it('returns isFullScore false when only the strength-day rule is met (minutes rule unmet)', () => {
+    const history = [
+      { date: '2026-10-13', focus: 'styrke', duration: 10, intensity: 'medium', completed: true },
+      { date: '2026-10-14', focus: 'styrke', duration: 10, intensity: 'medium', completed: true }
+    ];
+
+    const result = getWeeklyGuidelineStatus(history, REFERENCE_DATE);
+
+    expect(result.minutesRuleMet).toBe(false);
+    expect(result.strengthDaysRuleMet).toBe(true);
+    expect(result.isFullScore).toBe(false);
+  });
+
   it('excludes entries with no intensity field from minutes but still counts them toward strength-days', () => {
     const history = [
       { date: '2026-10-13', focus: 'styrke', duration: 45, completed: true }
