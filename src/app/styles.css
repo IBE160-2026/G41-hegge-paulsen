@@ -161,7 +161,8 @@ body:not(.account-page) .account-card {
 
 body.account-page #workout-config,
 body.account-page #results,
-body.account-page #log-section {
+body.account-page #log-section,
+body.account-page #weekly-plan-section {
   display: none;
 }
 
@@ -312,6 +313,46 @@ button:active {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 16px;
   align-items: end;
+}
+
+.weekly-plan-card {
+  margin-top: 24px;
+}
+
+.weekly-plan-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.weekly-plan-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+
+.weekly-plan-day {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f9fbff;
+}
+
+.weekly-plan-day h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.weekly-plan-rest {
+  background: var(--primary-soft);
+}
+
+.weekly-plan-empty {
+  color: var(--muted);
 }
 
 .big-text {

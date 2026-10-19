@@ -343,4 +343,80 @@ describe('Workout recommendation', () => {
     expect(readStoredHistory('smartokt-history:user-1', storage)).toEqual(firstUserHistory);
     expect(readStoredHistory('smartokt-history:user-2', storage)).toEqual(secondUserHistory);
   });
+
+  it('behaves exactly as before when no excludeExerciseIds argument is passed (regression guard)', () => {
+    const withoutParam = getWorkoutSuggestion({
+      time: 60,
+      focus: 'styrke',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'intermediate'
+    });
+
+    const withEmptyExclusion = getWorkoutSuggestion({
+      time: 60,
+      focus: 'styrke',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'intermediate',
+      excludeExerciseIds: []
+    });
+
+    expect(withEmptyExclusion.exerciseDetails.map((exercise) => exercise.id))
+      .toEqual(withoutParam.exerciseDetails.map((exercise) => exercise.id));
+  });
+
+  it('prefers an unexcluded candidate over a repeat when an unused alternative exists', () => {
+    // home-dumbbell + advanced level has 3 kondisjon candidates (burpee,
+    // mountain-climbers, march-in-place) but this session only needs 1 --
+    // plenty of unused alternatives, so excluding the baseline pick must not
+    // fall back to reusing it.
+    const baseline = getWorkoutSuggestion({
+      time: 30,
+      focus: 'kondisjon',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-dumbbell',
+      level: 'advanced'
+    });
+    const baselineIds = baseline.exerciseDetails.map((exercise) => exercise.id);
+
+    const withExclusion = getWorkoutSuggestion({
+      time: 30,
+      focus: 'kondisjon',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-dumbbell',
+      level: 'advanced',
+      excludeExerciseIds: baselineIds
+    });
+
+    expect(withExclusion.exerciseDetails.length).toBe(baselineIds.length);
+    expect(withExclusion.exerciseDetails.some((exercise) => baselineIds.includes(exercise.id))).toBe(false);
+  });
+
+  it('falls back to a previously excluded candidate for a slot once that slot\'s unused options run out, without shrinking the result', () => {
+    // home-bodyweight has exactly 7 styrke-compatible exercises across 4
+    // movement patterns (squat, horizontal-push, single-leg, core). Excluding
+    // every exercise exhausts the pool entirely, so every slot must fall back
+    // to reuse -- and the result must still be full-length (4 exercises).
+    const allHomeBodyweightStyrkeIds = [
+      'squat', 'push-up', 'air-squat', 'lunges', 'wall-push-up', 'step-up', 'plank'
+    ];
+
+    const result = getWorkoutSuggestion({
+      time: 30,
+      focus: 'styrke',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'intermediate',
+      excludeExerciseIds: allHomeBodyweightStyrkeIds
+    });
+
+    expect(result.exerciseDetails.length).toBe(4);
+    expect(result.exerciseDetails.every((exercise) => allHomeBodyweightStyrkeIds.includes(exercise.id))).toBe(true);
+  });
 });

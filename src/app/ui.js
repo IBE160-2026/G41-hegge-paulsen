@@ -22,6 +22,12 @@ import {
   STORAGE_KEY
 } from '../features/trainingLog.js';
 import { getWeeklyGuidelineStatus } from '../features/activityGuidelines.js';
+import {
+  getWeeklyPlan,
+  readStoredWeeklyPlan,
+  writeStoredWeeklyPlan,
+  WEEKLY_PLAN_STORAGE_KEY
+} from '../features/weeklyPlan.js';
 import { userHistory } from '../data/sampleHistory.js';
 
 const accountPage = new URLSearchParams(window.location.search).get('view') === 'account';
@@ -51,6 +57,8 @@ const progressTrend = document.getElementById('progress-trend');
 const progressList = document.getElementById('progress-list');
 const weeklyGuidelineBadge = document.getElementById('weekly-guideline-badge');
 const logForm = document.getElementById('workout-log-form');
+const weeklyPlanForm = document.getElementById('weekly-plan-form');
+const weeklyPlanList = document.getElementById('weekly-plan-list');
 const trainingModeSelect = document.getElementById('training-mode');
 const customEquipmentPanel = document.getElementById('custom-equipment-panel');
 const profileEquipmentOptionsContainer = document.getElementById('profile-equipment-options');
@@ -70,6 +78,8 @@ const profileBodyWeight = document.getElementById('profile-body-weight');
 
 let workoutHistory = readStoredHistory();
 let historyStorageKey = STORAGE_KEY;
+let weeklyPlanStorageKey = WEEKLY_PLAN_STORAGE_KEY;
+let weeklyPlan = readStoredWeeklyPlan(weeklyPlanStorageKey);
 let userProfile = readUserProfile();
 let currentUser = null;
 let currentUserAge = null;
@@ -132,6 +142,9 @@ async function applySession(session) {
       workoutHistory = [...userHistory];
       writeStoredHistory(workoutHistory, historyStorageKey);
     }
+    weeklyPlanStorageKey = WEEKLY_PLAN_STORAGE_KEY;
+    weeklyPlan = readStoredWeeklyPlan(weeklyPlanStorageKey);
+    renderWeeklyPlan(weeklyPlan);
     userProfile = readUserProfile();
     syncEquipmentSelections(userProfile.equipment);
     setAccountStatus('Ikke logget inn. Treningsforslag kan fortsatt brukes lokalt.');
@@ -145,6 +158,9 @@ async function applySession(session) {
     workoutHistory = [...userHistory];
     writeStoredHistory(workoutHistory, historyStorageKey);
   }
+  weeklyPlanStorageKey = `${WEEKLY_PLAN_STORAGE_KEY}:${currentUser.id}`;
+  weeklyPlan = readStoredWeeklyPlan(weeklyPlanStorageKey);
+  renderWeeklyPlan(weeklyPlan);
   setAccountStatus(`Innlogget som ${currentUser.email}. Henter profilen ...`);
 
   try {
@@ -310,20 +326,20 @@ function renderExerciseDemo(exercise) {
   `;
 }
 
-function renderSuggestion(data) {
-  suggestionTitle.textContent = data.title;
-
-  const exerciseDetails = data.exerciseDetails && data.exerciseDetails.length
+function getDisplayExerciseDetails(data) {
+  return data.exerciseDetails && data.exerciseDetails.length
     ? data.exerciseDetails
-    : data.exercises.map((exerciseName) => ({
+    : (data.exercises || []).map((exerciseName) => ({
         name: { no: exerciseName, en: exerciseName },
         instructions: { no: 'Se mer om øvelsen i treningskatalogen.', en: 'See more about the exercise in the training catalog.' },
         videoUrl: '',
         animation: 'generic',
         muscles: ['Generell styrke']
       }));
+}
 
-  suggestionExercises.innerHTML = exerciseDetails
+function renderExerciseListItems(exerciseDetails) {
+  return exerciseDetails
     .map((exercise) => {
       const label = exercise.name && exercise.name.no && exercise.name.en
         ? `${exercise.name.no} (${exercise.name.en})`
@@ -376,7 +392,11 @@ function renderSuggestion(data) {
       `;
     })
     .join('');
+}
 
+function renderSuggestion(data) {
+  suggestionTitle.textContent = data.title;
+  suggestionExercises.innerHTML = renderExerciseListItems(getDisplayExerciseDetails(data));
   suggestionDuration.textContent = `Varighet: ${data.duration} min`;
   suggestionIntensity.textContent = `Intensitet: ${data.intensity}`;
   suggestionNotes.textContent = data.reason || data.notes;
@@ -412,6 +432,59 @@ function renderProgress(history) {
       (entry) =>
         `<li>${entry.date} • ${entry.focus} • ${entry.load} kg</li>`
     )
+    .join('');
+}
+
+const weekdayLabels = {
+  1: 'Mandag',
+  2: 'Tirsdag',
+  3: 'Onsdag',
+  4: 'Torsdag',
+  5: 'Fredag',
+  6: 'Lørdag',
+  7: 'Søndag'
+};
+
+const focusLabels = {
+  styrke: 'Styrke',
+  kondisjon: 'Kondisjon',
+  generell: 'Generell helse'
+};
+
+function renderWeeklyPlan(plan) {
+  if (!plan || !plan.days || !plan.days.length) {
+    weeklyPlanList.innerHTML = '<li class="weekly-plan-empty">Ingen ukeplan generert enda. Velg antall treningsdager og trykk «Generer ukeplan».</li>';
+    return;
+  }
+
+  const dayByWeekday = new Map(plan.days.map((day) => [day.isoWeekday, day]));
+
+  weeklyPlanList.innerHTML = [1, 2, 3, 4, 5, 6, 7]
+    .map((isoWeekday) => {
+      const day = dayByWeekday.get(isoWeekday);
+      const weekdayLabel = weekdayLabels[isoWeekday];
+
+      if (!day) {
+        return `
+          <li class="weekly-plan-day weekly-plan-rest">
+            <h3>${weekdayLabel}</h3>
+            <p class="meta">Hviledag</p>
+          </li>
+        `;
+      }
+
+      const exerciseItems = renderExerciseListItems(getDisplayExerciseDetails(day.suggestion));
+
+      return `
+        <li class="weekly-plan-day">
+          <h3>${weekdayLabel} &middot; ${focusLabels[day.focus] || day.focus}</h3>
+          <ul class="exercise-list">${exerciseItems}</ul>
+          <p class="meta">Varighet: ${day.suggestion.duration} min</p>
+          <p class="meta">Intensitet: ${day.suggestion.intensity}</p>
+          <p class="notes">${day.suggestion.reason || day.suggestion.notes || ''}</p>
+        </li>
+      `;
+    })
     .join('');
 }
 
@@ -480,5 +553,44 @@ logForm.addEventListener('submit', (event) => {
   document.getElementById('log-date').value = todayLocalDateString();
 });
 
+async function generateWeeklyPlan() {
+  const mainFormData = new FormData(form);
+  const weeklyPlanFormData = new FormData(weeklyPlanForm);
+  const selectedTrainingMode = mainFormData.get('trainingMode');
+  const selectedEquipment = mainFormData.getAll('profile-equipment');
+
+  if (selectedTrainingMode === 'custom') {
+    userProfile = writeUserProfile({ equipment: selectedEquipment });
+    if (currentUser && hasRemoteProfile) {
+      try {
+        await saveProfileEquipment(supabase, currentUser.id, userProfile.equipment);
+      } catch (error) {
+        setAccountStatus(`Kunne ikke synkronisere utstyrslisten: ${accountErrorMessage(error)}`, true);
+      }
+    } else if (currentUser) {
+      setAccountStatus('Lagre profilen din først for å synkronisere utstyrslisten til kontoen.');
+    }
+  }
+
+  weeklyPlan = getWeeklyPlan({
+    trainingDays: weeklyPlanFormData.get('trainingDays'),
+    time: Number(mainFormData.get('time')),
+    energy: mainFormData.get('energy'),
+    level: mainFormData.get('level'),
+    trainingMode: selectedTrainingMode,
+    availableEquipment: userProfile.equipment,
+    history: workoutHistory
+  });
+
+  writeStoredWeeklyPlan(weeklyPlan, weeklyPlanStorageKey);
+  renderWeeklyPlan(weeklyPlan);
+}
+
+weeklyPlanForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  void generateWeeklyPlan();
+});
+
 document.getElementById('log-date').value = todayLocalDateString();
 updateView();
+renderWeeklyPlan(weeklyPlan);

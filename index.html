@@ -211,6 +211,20 @@
           <button type="submit">Legg til økt</button>
         </form>
       </section>
+
+      <section id="weekly-plan-section" class="card weekly-plan-card">
+        <h2>Ukeplan</h2>
+        <form id="weekly-plan-form" class="weekly-plan-form">
+          <div class="field-group">
+            <label for="weekly-plan-days">Antall treningsdager denne uken</label>
+            <input id="weekly-plan-days" name="trainingDays" type="number" min="1" max="7" value="3" />
+          </div>
+
+          <button type="submit">Generer ukeplan</button>
+        </form>
+
+        <ul id="weekly-plan-list" class="weekly-plan-list"></ul>
+      </section>
     </main>
 
     <script type="module" src="./src/app/ui.js"></script>

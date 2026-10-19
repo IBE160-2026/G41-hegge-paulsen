@@ -45,6 +45,57 @@ function getExercisePlan(exercise, focus, time, energy) {
   };
 }
 
+// Selects up to `desiredCount` exercises from `list` (already in priority
+// order), skipping entries whose `id` is in `excludeSet`. When the unexcluded
+// candidates can't fill `desiredCount`, the remaining slots are backfilled
+// from the excluded candidates (in the same priority order) so a caller never
+// gets a shorter result than the unfiltered selection would have produced.
+function selectWithExclusionFallback(list, desiredCount, excludeSet) {
+  const selected = list.filter((exercise) => !excludeSet.has(exercise.id)).slice(0, desiredCount);
+
+  if (selected.length < desiredCount) {
+    const selectedIds = new Set(selected.map((exercise) => exercise.id));
+    for (const exercise of list) {
+      if (selected.length >= desiredCount) break;
+      if (selectedIds.has(exercise.id)) continue;
+      selected.push(exercise);
+      selectedIds.add(exercise.id);
+    }
+  }
+
+  return selected;
+}
+
+// Same idea as selectWithExclusionFallback, but deduplicates by movement
+// pattern (one exercise per pattern) the way the existing styrke selection
+// logic always has. First pass: for each pattern (in priority order), take
+// the first unexcluded candidate. Second pass: for any pattern that still has
+// no pick (every candidate for it was excluded), allow reuse of its first
+// (excluded) candidate -- fallback reuse scoped to that one slot only.
+function selectUniqueMovementPatterns(list, desiredCount, excludeSet) {
+  const patterns = new Set();
+  const selected = [];
+
+  for (const exercise of list) {
+    if (selected.length >= desiredCount) break;
+    if (patterns.has(exercise.movementPattern)) continue;
+    if (excludeSet.has(exercise.id)) continue;
+    patterns.add(exercise.movementPattern);
+    selected.push(exercise);
+  }
+
+  if (selected.length < desiredCount) {
+    for (const exercise of list) {
+      if (selected.length >= desiredCount) break;
+      if (patterns.has(exercise.movementPattern)) continue;
+      patterns.add(exercise.movementPattern);
+      selected.push(exercise);
+    }
+  }
+
+  return selected;
+}
+
 const levelRank = { beginner: 1, intermediate: 2, advanced: 3 };
 const difficultyRank = { easy: 0, medium: 1, hard: 2 };
 const easeScore = (exercise) => levelRank[exercise.level] * 10 + (difficultyRank[exercise.difficulty] ?? 1);
@@ -55,7 +106,7 @@ const equipmentPreference = {
   gym: ['barbell', 'machine', 'cable-machine', 'dumbbell', 'kettlebell', 'bodyweight', 'rowing-machine', 'stationary-bike', 'pull-up-bar']
 };
 
-export function getWorkoutSuggestion({ time, focus, energy, history = [], trainingMode = 'home', level = 'intermediate', availableEquipment = [] }) {
+export function getWorkoutSuggestion({ time, focus, energy, history = [], trainingMode = 'home', level = 'intermediate', availableEquipment = [], excludeExerciseIds = [] }) {
   const normalizedFocus = focus || 'generell';
   const normalizedMode = trainingMode === 'custom'
     ? 'custom'
@@ -125,21 +176,18 @@ export function getWorkoutSuggestion({ time, focus, energy, history = [], traini
     prioritizedExercises = [...easierExercises, ...availableExercises.filter((exercise) => exercise.difficulty === 'hard')];
   }
 
-  let selectedExercises = prioritizedExercises.slice(0, 3);
+  const excludeSet = new Set(excludeExerciseIds);
+
+  let selectedExercises = selectWithExclusionFallback(prioritizedExercises, 3, excludeSet);
 
   if (normalizedFocus === 'styrke') {
     const desiredCount = Math.max(4, Math.min(10, Math.round(time / 12)));
-    const movementPatterns = new Set();
-    selectedExercises = prioritizedExercises.filter((exercise) => {
-      if (movementPatterns.has(exercise.movementPattern)) return false;
-      movementPatterns.add(exercise.movementPattern);
-      return true;
-    }).slice(0, desiredCount);
+    selectedExercises = selectUniqueMovementPatterns(prioritizedExercises, desiredCount, excludeSet);
   }
 
   if (normalizedFocus === 'kondisjon') {
     const branchCount = time >= 45 ? 2 : 1;
-    selectedExercises = prioritizedExercises.slice(0, branchCount);
+    selectedExercises = selectWithExclusionFallback(prioritizedExercises, branchCount, excludeSet);
   }
 
   const exerciseDetails = selectedExercises.map((exercise) => getExercisePlan(exercise, normalizedFocus, time, energy));
