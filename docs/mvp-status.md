@@ -1,22 +1,23 @@
 # SmartØkt MVP Status
 
 ## Status
-Aktivt arbeid på MVP-kjerneflyten.
+MVP-kjerneflyten fungerer, og flere post-MVP-funksjoner er allerede lagt til: ukentlig aktivitetsvurdering (med 65+-regel), auto-generert ukeplan, og en regelbasert chat som alternativ til menyen.
 
 ## Scope
 ### In scope
-- bruker kan velge tid, fokus og energinivå
-- appen genererer et realistisk øktforslag
+- bruker kan velge tid, fokus og energinivå, enten via meny eller ved å beskrive økten med egne ord til en enkel regelbasert chat
+- appen genererer et realistisk øktforslag, vist på en egen side
 - bruker kan logge en økt
 - appen gir et forslag til neste vekt
-- appen viser enkel progresjon over tid
+- appen viser enkel progresjon over tid og en ukentlig vurdering mot Helsedirektoratets aktivitetsråd (inkludert 65+-regelen for balanse- og styrketrening)
+- bruker kan generere en ukeplan (flere dager) via meny eller chat, med mulighet for å overstyre fokus/energi/treningsoppsett/treningsnivå per dag
 - lokal fallback-data brukes når ekstern API ikke er tilgjengelig
 
 ### Out of scope
-- live eksterne API-integrasjoner i første iterasjon
+- live eksterne API-integrasjoner utover Supabase-kontoer (ingen egen AI/LLM-API — chatten er regelbasert tekstgjenkjenning, ikke en ekte språkmodell)
 - avansert videoanalyse
-- komplekse AI-funksjoner
 - sosial eller lagbasert trening
+- Supabase-synk av ukeplanen (per nå kun lokal lagring per bruker — se deferred-work.md)
 
 ## Definition of done for MVP
 - appen kan kjøres lokalt uten egne nøkler
@@ -27,17 +28,13 @@ Aktivt arbeid på MVP-kjerneflyten.
 - tester dekker sentral logikk
 
 ## Current focus
-Pause new feature work and review the existing exercise catalog and recommendation rules before expanding the MVP.
+Verifisere den siste runden med UI-endringer i en faktisk nettleser (chat-input, ukeplan med per-dag-overstyring, og den nye forslagssiden) — disse er bygget og testet med jsdom/vitest, men ikke sett i en ekte nettleser ennå.
 
 ## Next steps
-1. Confirm the supported user profiles: bodyweight, dumbbells, kettlebell, and gym equipment, plus the intended experience levels.
-2. Audit exercise names, equipment requirements, level, variations, instructions, and trustworthy references. YouTube search links are demonstrations, not evidence that advice has been reviewed.
-3. Test recommendations against concrete scenarios: beginner bodyweight training, home training with weights, and experienced gym training. Check equipment compatibility, movement-pattern variety, and sets, reps, and rest guidance.
-4. Review the app in the browser and fix the highest-impact usability issues.
-5. Document and push the reviewed changes in small, traceable increments.
-6. Consider weekly planning only after the exercise catalog and individual workout recommendations are reliable.
-
-Avoid starting weekly planning or further animation work during this review unless the scope is explicitly changed.
+1. Kjør gjennom hele flyten i en nettleser: meny → forslagsside, chat → forslagsside, ukeplan (meny og chat) → forslagsside, og innlogging mens man er på forslagssiden.
+2. Vurder om ukeplanen skal synkroniseres til Supabase for innloggede brukere (se deferred-work.md for migreringsspørsmålet dette reiser).
+3. Se over `_bmad-output/implementation-artifacts/deferred-work.md` for resterende mindre funn (test-dekning, en racing-tilstand i applySession, m.m.).
+4. Vurder om PR-en for `worktree-smartokt-deferred-work` skal åpnes nå som det er en samlet, sammenhengende leveranse.
 
 ## Notes
 Dette dokumentet er ment som en enkel statusoversikt som skal være sporbar i repoet og som viser at vi jobber mot et realistisk og begrenset MVP.

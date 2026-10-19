@@ -1,4 +1,5 @@
 import { getWorkoutSuggestion } from '../features/recommendationEngine.js';
+import { parseWorkoutRequest, parseWeeklyPlanRequest } from '../features/chatParser.js';
 import { exerciseSources } from '../data/exerciseCatalog.js';
 import { profileEquipmentOptions, readUserProfile, writeUserProfile } from '../features/userProfile.js';
 import { supabase } from '../features/supabaseClient.js';
@@ -21,20 +22,59 @@ import {
   writeStoredHistory,
   STORAGE_KEY
 } from '../features/trainingLog.js';
+import { getWeeklyGuidelineStatus } from '../features/activityGuidelines.js';
+import {
+  getWeeklyPlan,
+  getFocusForDayIndex,
+  readStoredWeeklyPlan,
+  writeStoredWeeklyPlan,
+  WEEKLY_PLAN_STORAGE_KEY
+} from '../features/weeklyPlan.js';
 import { userHistory } from '../data/sampleHistory.js';
 
-const accountPage = new URLSearchParams(window.location.search).get('view') === 'account';
+const viewParam = new URLSearchParams(window.location.search).get('view');
+const accountPage = viewParam === 'account';
+const suggestionPage = viewParam === 'forslag';
+const weeklyPlanPage = viewParam === 'ukeplan';
 const pageTitle = document.getElementById('page-title');
 const accountNavigation = document.getElementById('account-navigation');
 
 document.body.classList.toggle('account-page', accountPage);
-if (accountPage) {
-  pageTitle.textContent = 'Konto';
+document.body.classList.toggle('suggestion-page', suggestionPage);
+document.body.classList.toggle('weekly-plan-page', weeklyPlanPage);
+if (accountPage || suggestionPage || weeklyPlanPage) {
+  pageTitle.textContent = accountPage ? 'Konto' : weeklyPlanPage ? 'Ukeplan' : 'Øktforslag';
   accountNavigation.href = '/';
   accountNavigation.textContent = 'Tilbake til økt';
 }
 
+// Local, ui.js-internal persistence for the generated suggestion -- mirrors
+// trainingLog.js's try/catch-around-localStorage pattern. Not exported:
+// nothing outside this file needs the current suggestion.
+const SUGGESTION_STORAGE_KEY = 'smartokt-current-suggestion';
+
+function readStoredSuggestion(storage = globalThis.localStorage) {
+  try {
+    const raw = storage.getItem(SUGGESTION_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function writeStoredSuggestion(suggestion, storage = globalThis.localStorage) {
+  try {
+    storage.setItem(SUGGESTION_STORAGE_KEY, JSON.stringify(suggestion));
+  } catch (error) {
+    // ignore storage failures in restricted environments
+  }
+
+  return suggestion;
+}
+
 const form = document.getElementById('workout-form');
+const chatForm = document.getElementById('chat-form');
+const chatText = document.getElementById('chat-text');
 const suggestionTitle = document.getElementById('suggestion-title');
 const suggestionExercises = document.getElementById('suggestion-exercises');
 const suggestionDuration = document.getElementById('suggestion-duration');
@@ -48,7 +88,14 @@ const progressFocus = document.getElementById('progress-focus');
 const latestWorkout = document.getElementById('latest-workout');
 const progressTrend = document.getElementById('progress-trend');
 const progressList = document.getElementById('progress-list');
+const weeklyGuidelineBadge = document.getElementById('weekly-guideline-badge');
 const logForm = document.getElementById('workout-log-form');
+const weeklyPlanForm = document.getElementById('weekly-plan-form');
+const weeklyPlanDaysSelect = document.getElementById('weekly-plan-days');
+const weeklyPlanDayOverrides = document.getElementById('weekly-plan-day-overrides');
+const weeklyPlanChatForm = document.getElementById('weekly-plan-chat-form');
+const weeklyPlanChatText = document.getElementById('weekly-plan-chat-text');
+const weeklyPlanList = document.getElementById('weekly-plan-list');
 const trainingModeSelect = document.getElementById('training-mode');
 const customEquipmentPanel = document.getElementById('custom-equipment-panel');
 const profileEquipmentOptionsContainer = document.getElementById('profile-equipment-options');
@@ -68,8 +115,11 @@ const profileBodyWeight = document.getElementById('profile-body-weight');
 
 let workoutHistory = readStoredHistory();
 let historyStorageKey = STORAGE_KEY;
+let weeklyPlanStorageKey = WEEKLY_PLAN_STORAGE_KEY;
+let weeklyPlan = readStoredWeeklyPlan(weeklyPlanStorageKey);
 let userProfile = readUserProfile();
 let currentUser = null;
+let currentUserAge = null;
 let hasRemoteProfile = false;
 
 function renderEquipmentOptions(container, inputName, selectedEquipment) {
@@ -90,6 +140,14 @@ function syncEquipmentSelections(equipment) {
     });
 }
 
+function todayLocalDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function setAccountStatus(message, isError = false) {
   accountStatus.textContent = message;
   accountStatus.classList.toggle('account-error', isError);
@@ -105,7 +163,15 @@ function updateCustomEquipmentVisibility() {
 trainingModeSelect.addEventListener('change', updateCustomEquipmentVisibility);
 updateCustomEquipmentVisibility();
 
+// Incremented at the start of every applySession call; a call checks this
+// after its one await point and bails out if a newer call has since started,
+// so a slow/late-resolving loadProfile fetch can never overwrite state a
+// newer call already set (e.g. sign-out firing, or a token refresh, while an
+// earlier fetch is still in flight).
+let sessionRequestId = 0;
+
 async function applySession(session) {
+  const requestId = ++sessionRequestId;
   currentUser = session?.user || null;
   accountAuthForm.hidden = Boolean(currentUser);
   accountProfileForm.hidden = !currentUser;
@@ -114,12 +180,16 @@ async function applySession(session) {
 
   if (!currentUser) {
     hasRemoteProfile = false;
+    currentUserAge = null;
     historyStorageKey = STORAGE_KEY;
     workoutHistory = readStoredHistory(historyStorageKey);
     if (!workoutHistory.length) {
       workoutHistory = [...userHistory];
       writeStoredHistory(workoutHistory, historyStorageKey);
     }
+    weeklyPlanStorageKey = WEEKLY_PLAN_STORAGE_KEY;
+    weeklyPlan = readStoredWeeklyPlan(weeklyPlanStorageKey);
+    renderWeeklyPlan(weeklyPlan);
     userProfile = readUserProfile();
     syncEquipmentSelections(userProfile.equipment);
     setAccountStatus('Ikke logget inn. Treningsforslag kan fortsatt brukes lokalt.');
@@ -133,13 +203,18 @@ async function applySession(session) {
     workoutHistory = [...userHistory];
     writeStoredHistory(workoutHistory, historyStorageKey);
   }
+  weeklyPlanStorageKey = `${WEEKLY_PLAN_STORAGE_KEY}:${currentUser.id}`;
+  weeklyPlan = readStoredWeeklyPlan(weeklyPlanStorageKey);
+  renderWeeklyPlan(weeklyPlan);
   setAccountStatus(`Innlogget som ${currentUser.email}. Henter profilen ...`);
 
   try {
     const profile = await loadProfile(supabase, currentUser.id);
+    if (requestId !== sessionRequestId) return;
     hasRemoteProfile = Boolean(profile);
     profileUsername.value = profile?.username || '';
     profileAge.value = profile?.age ?? '';
+    currentUserAge = profile?.age ?? null;
     profileBodyWeight.value = profile?.body_weight_kg ?? '';
     userProfile = writeUserProfile({ equipment: profile?.equipment || ['bodyweight', 'dumbbell'] });
     syncEquipmentSelections(userProfile.equipment);
@@ -148,6 +223,8 @@ async function applySession(session) {
       : `Innlogget som ${currentUser.email}. Fyll ut og lagre profilen for å synkronisere den.`);
     void updateView();
   } catch (error) {
+    if (requestId !== sessionRequestId) return;
+    currentUserAge = null;
     setAccountStatus(`Kunne ikke hente profilen: ${error.message}`, true);
     void updateView();
   }
@@ -268,6 +345,7 @@ accountProfileForm.addEventListener('submit', async (event) => {
     hasRemoteProfile = true;
     userProfile = writeUserProfile({ equipment: profile.equipment });
     profileAge.value = profile.age ?? '';
+    currentUserAge = profile.age ?? null;
     profileBodyWeight.value = profile.body_weight_kg ?? '';
     syncEquipmentSelections(userProfile.equipment);
     setAccountStatus('Profilen er lagret og synkronisert.');
@@ -295,20 +373,20 @@ function renderExerciseDemo(exercise) {
   `;
 }
 
-function renderSuggestion(data) {
-  suggestionTitle.textContent = data.title;
-
-  const exerciseDetails = data.exerciseDetails && data.exerciseDetails.length
+function getDisplayExerciseDetails(data) {
+  return data.exerciseDetails && data.exerciseDetails.length
     ? data.exerciseDetails
-    : data.exercises.map((exerciseName) => ({
+    : (data.exercises || []).map((exerciseName) => ({
         name: { no: exerciseName, en: exerciseName },
         instructions: { no: 'Se mer om øvelsen i treningskatalogen.', en: 'See more about the exercise in the training catalog.' },
         videoUrl: '',
         animation: 'generic',
         muscles: ['Generell styrke']
       }));
+}
 
-  suggestionExercises.innerHTML = exerciseDetails
+function renderExerciseListItems(exerciseDetails) {
+  return exerciseDetails
     .map((exercise) => {
       const label = exercise.name && exercise.name.no && exercise.name.en
         ? `${exercise.name.no} (${exercise.name.en})`
@@ -361,7 +439,11 @@ function renderSuggestion(data) {
       `;
     })
     .join('');
+}
 
+function renderSuggestion(data) {
+  suggestionTitle.textContent = data.title;
+  suggestionExercises.innerHTML = renderExerciseListItems(getDisplayExerciseDetails(data));
   suggestionDuration.textContent = `Varighet: ${data.duration} min`;
   suggestionIntensity.textContent = `Intensitet: ${data.intensity}`;
   suggestionNotes.textContent = data.reason || data.notes;
@@ -384,6 +466,9 @@ function renderProgress(history) {
     : latestSummary.label;
   progressTrend.textContent = summary.trendMessage;
 
+  const weeklyStatus = getWeeklyGuidelineStatus(history, new Date(), currentUserAge);
+  weeklyGuidelineBadge.textContent = weeklyStatus.isFullScore ? 'Godkjent uke' : 'Ikke godkjent uke';
+
   if (!summary.recentSessions.length) {
     progressList.innerHTML = '<li>Ingen treninger logget enda.</li>';
     return;
@@ -394,6 +479,59 @@ function renderProgress(history) {
       (entry) =>
         `<li>${entry.date} • ${entry.focus} • ${entry.load} kg</li>`
     )
+    .join('');
+}
+
+const weekdayLabels = {
+  1: 'Mandag',
+  2: 'Tirsdag',
+  3: 'Onsdag',
+  4: 'Torsdag',
+  5: 'Fredag',
+  6: 'Lørdag',
+  7: 'Søndag'
+};
+
+const focusLabels = {
+  styrke: 'Styrke',
+  kondisjon: 'Kondisjon',
+  generell: 'Generell helse'
+};
+
+function renderWeeklyPlan(plan) {
+  if (!plan || !plan.days || !plan.days.length) {
+    weeklyPlanList.innerHTML = '<li class="weekly-plan-empty">Ingen ukeplan generert enda. Velg antall treningsdager og trykk «Få ukeplan basert på dine mål for kommende uke».</li>';
+    return;
+  }
+
+  const dayByWeekday = new Map(plan.days.map((day) => [day.isoWeekday, day]));
+
+  weeklyPlanList.innerHTML = [1, 2, 3, 4, 5, 6, 7]
+    .map((isoWeekday) => {
+      const day = dayByWeekday.get(isoWeekday);
+      const weekdayLabel = weekdayLabels[isoWeekday];
+
+      if (!day) {
+        return `
+          <li class="weekly-plan-day weekly-plan-rest">
+            <h3>${weekdayLabel}</h3>
+            <p class="meta">Hviledag</p>
+          </li>
+        `;
+      }
+
+      const exerciseItems = renderExerciseListItems(getDisplayExerciseDetails(day.suggestion));
+
+      return `
+        <li class="weekly-plan-day">
+          <h3>${weekdayLabel} &middot; ${focusLabels[day.focus] || day.focus}</h3>
+          <ul class="exercise-list">${exerciseItems}</ul>
+          <p class="meta">Varighet: ${day.suggestion.duration} min</p>
+          <p class="meta">Intensitet: ${day.suggestion.intensity}</p>
+          <p class="notes">${day.suggestion.reason || day.suggestion.notes || ''}</p>
+        </li>
+      `;
+    })
     .join('');
 }
 
@@ -431,36 +569,218 @@ async function updateView() {
 
   const nextWeightSuggestion = suggestNextWeight(workoutHistory);
 
-  renderSuggestion(suggestion);
+  if (!suggestionPage) {
+    renderSuggestion(suggestion);
+  }
   renderNextWeight(nextWeightSuggestion);
   renderProgress(workoutHistory);
+
+  return suggestion;
+}
+
+function renderSuggestionEmptyState() {
+  suggestionTitle.textContent = 'Ingen øktforslag generert enda.';
+  suggestionExercises.innerHTML = '';
+  suggestionDuration.textContent = '';
+  suggestionIntensity.textContent = '';
+  suggestionNotes.textContent = 'Bruk menyen eller chatten på forsiden for å få et øktforslag.';
 }
 
 form.addEventListener('submit', (event) => {
   event.preventDefault();
-  void updateView();
+  void (async () => {
+    const suggestion = await updateView();
+    writeStoredSuggestion(suggestion);
+    window.location.href = '?view=forslag';
+  })();
+});
+
+chatForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+
+  const parsedRequest = parseWorkoutRequest(chatText.value);
+  const suggestion = getWorkoutSuggestion({
+    time: parsedRequest.time,
+    focus: parsedRequest.focus,
+    energy: parsedRequest.energy,
+    trainingMode: parsedRequest.trainingMode,
+    level: parsedRequest.level,
+    availableEquipment: parsedRequest.equipment,
+    history: workoutHistory
+  });
+
+  writeStoredSuggestion(suggestion);
+  window.location.href = '?view=forslag';
 });
 
 logForm.addEventListener('submit', (event) => {
   event.preventDefault();
 
   const formData = new FormData(logForm);
-  const selectedDate = formData.get('log-date') || new Date().toISOString().slice(0, 10);
+  const selectedDate = formData.get('log-date') || todayLocalDateString();
 
   workoutHistory = logWorkout(workoutHistory, {
     date: selectedDate,
     focus: formData.get('log-focus') || 'styrke',
     duration: Number(formData.get('log-duration')) || 30,
     load: Number(formData.get('log-load')) || 0,
-    performance: formData.get('log-performance') || 'good'
+    performance: formData.get('log-performance') || 'good',
+    intensity: formData.get('log-intensity') || 'medium'
   });
 
   writeStoredHistory(workoutHistory, historyStorageKey);
   void updateView();
   logForm.reset();
-  document.getElementById('log-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('log-date').value = todayLocalDateString();
 });
 
-const today = new Date().toISOString().slice(0, 10);
-document.getElementById('log-date').value = today;
+const DAY_OVERRIDE_FOCUS_OPTIONS = [
+  { value: 'styrke', label: 'Styrke' },
+  { value: 'kondisjon', label: 'Kondisjon' },
+  { value: 'generell', label: 'Generell helse' }
+];
+
+const DAY_OVERRIDE_ENERGY_OPTIONS = [
+  { value: 'low', label: 'Lav' },
+  { value: 'medium', label: 'Middels' },
+  { value: 'high', label: 'Høy' }
+];
+
+// 'custom' is deliberately excluded here too -- see the matching note in
+// weeklyPlan.js's VALID_TRAINING_MODES.
+const DAY_OVERRIDE_TRAINING_MODE_OPTIONS = [
+  { value: 'home-bodyweight', label: 'Hjemme / kroppsvekt' },
+  { value: 'home-dumbbell', label: 'Hjemme / manualer' },
+  { value: 'home-kettlebell', label: 'Hjemme / kettlebell' },
+  { value: 'gym', label: 'Senter / tyngre utstyr' }
+];
+
+const DAY_OVERRIDE_LEVEL_OPTIONS = [
+  { value: 'beginner', label: 'Nybegynner' },
+  { value: 'intermediate', label: 'Middels erfaring' },
+  { value: 'advanced', label: 'Erfaren' }
+];
+
+function buildDayOverrideOptions(options, selectedValue) {
+  return options
+    .map(({ value, label }) => `<option value="${value}" ${value === selectedValue ? 'selected' : ''}>${label}</option>`)
+    .join('');
+}
+
+// Rebuilds the per-day override rows whenever the day-count dropdown changes.
+// Each row covers focus, energy, trainingMode and level -- all four fields
+// vary per day, not just energy -- pre-filled with what the automatic
+// rotation and the main menu's current values would already produce, so
+// submitting without touching any row still yields the same plan as before
+// this feature existed.
+function renderWeeklyPlanDayOverrides(dayCount) {
+  const mainFormData = new FormData(form);
+  const defaultEnergy = mainFormData.get('energy') || 'medium';
+  const defaultTrainingMode = mainFormData.get('trainingMode') || 'home-dumbbell';
+  const defaultLevel = mainFormData.get('level') || 'intermediate';
+
+  const header = `
+    <div class="weekly-plan-day-override weekly-plan-day-override-header">
+      <span></span>
+      <span>Fokus</span>
+      <span>Energinivå</span>
+      <span>Treningsoppsett</span>
+      <span>Treningsnivå</span>
+    </div>
+  `;
+
+  const rows = Array.from({ length: dayCount }, (_, i) => `
+    <div class="weekly-plan-day-override">
+      <label>Dag ${i + 1}</label>
+      <select class="weekly-plan-day-focus" data-day-index="${i}">${buildDayOverrideOptions(DAY_OVERRIDE_FOCUS_OPTIONS, getFocusForDayIndex(i))}</select>
+      <select class="weekly-plan-day-energy" data-day-index="${i}">${buildDayOverrideOptions(DAY_OVERRIDE_ENERGY_OPTIONS, defaultEnergy)}</select>
+      <select class="weekly-plan-day-training-mode" data-day-index="${i}">${buildDayOverrideOptions(DAY_OVERRIDE_TRAINING_MODE_OPTIONS, defaultTrainingMode)}</select>
+      <select class="weekly-plan-day-level" data-day-index="${i}">${buildDayOverrideOptions(DAY_OVERRIDE_LEVEL_OPTIONS, defaultLevel)}</select>
+    </div>
+  `).join('');
+
+  weeklyPlanDayOverrides.innerHTML = header + rows;
+}
+
+weeklyPlanDaysSelect.addEventListener('change', () => {
+  renderWeeklyPlanDayOverrides(Number(weeklyPlanDaysSelect.value));
+});
+
+renderWeeklyPlanDayOverrides(Number(weeklyPlanDaysSelect.value));
+
+// Focus, energy, trainingMode and level are all set per day via the
+// override rows (each pre-filled with a sensible default, so submitting
+// without touching any row reproduces the automatic rotation/main-menu
+// values). The week-wide `energy`/`trainingMode`/`level` params below are
+// only a fallback for a row somehow missing from the DOM; `time` has no
+// per-day equivalent and still comes from the main menu. Each row's
+// trainingMode deliberately excludes "custom" -- see the matching note on
+// weeklyPlan.js's VALID_TRAINING_MODES.
+function generateWeeklyPlan() {
+  const mainFormData = new FormData(form);
+  const weeklyPlanFormData = new FormData(weeklyPlanForm);
+
+  const dayOverrides = Array.from(
+    weeklyPlanDayOverrides.querySelectorAll('.weekly-plan-day-override:not(.weekly-plan-day-override-header)')
+  ).map((row) => ({
+    focus: row.querySelector('.weekly-plan-day-focus').value,
+    energy: row.querySelector('.weekly-plan-day-energy').value,
+    trainingMode: row.querySelector('.weekly-plan-day-training-mode').value,
+    level: row.querySelector('.weekly-plan-day-level').value
+  }));
+
+  weeklyPlan = getWeeklyPlan({
+    trainingDays: weeklyPlanFormData.get('trainingDays'),
+    time: Number(mainFormData.get('time')),
+    energy: mainFormData.get('energy'),
+    level: mainFormData.get('level'),
+    trainingMode: mainFormData.get('trainingMode'),
+    availableEquipment: userProfile.equipment,
+    history: workoutHistory,
+    dayOverrides
+  });
+
+  writeStoredWeeklyPlan(weeklyPlan, weeklyPlanStorageKey);
+  window.location.href = '?view=ukeplan';
+}
+
+weeklyPlanForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  void generateWeeklyPlan();
+});
+
+weeklyPlanChatForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+
+  const parsedRequest = parseWeeklyPlanRequest(weeklyPlanChatText.value);
+
+  weeklyPlan = getWeeklyPlan({
+    trainingDays: parsedRequest.trainingDays,
+    time: parsedRequest.time,
+    energy: parsedRequest.energy,
+    level: parsedRequest.level,
+    trainingMode: parsedRequest.trainingMode,
+    availableEquipment: parsedRequest.equipment,
+    history: workoutHistory
+  });
+
+  writeStoredWeeklyPlan(weeklyPlan, weeklyPlanStorageKey);
+  window.location.href = '?view=ukeplan';
+});
+
+document.getElementById('log-date').value = todayLocalDateString();
 updateView();
+renderWeeklyPlan(weeklyPlan);
+
+// On the suggestion page (?view=forslag), replace whatever updateView() just
+// rendered (the menu form's current/default selections) with the actually
+// persisted suggestion -- or an empty/prompt state when nothing has been
+// persisted yet (e.g. a bare/bookmarked visit).
+if (suggestionPage) {
+  const storedSuggestion = readStoredSuggestion();
+  if (storedSuggestion) {
+    renderSuggestion(storedSuggestion);
+  } else {
+    renderSuggestionEmptyState();
+  }
+}

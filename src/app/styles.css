@@ -161,12 +161,40 @@ body:not(.account-page) .account-card {
 
 body.account-page #workout-config,
 body.account-page #results,
-body.account-page #log-section {
+body.account-page #log-section,
+body.account-page #weekly-plan-section,
+body.account-page #chat-section,
+body.account-page #suggestion-page-section,
+body.account-page #weekly-plan-page-section {
   display: none;
 }
 
 body.account-page .account-card {
   max-width: 760px;
+}
+
+body.suggestion-page #account-panel,
+body.suggestion-page #workout-config,
+body.suggestion-page #chat-section,
+body.suggestion-page #weekly-plan-section {
+  display: none;
+}
+
+body.weekly-plan-page #account-panel,
+body.weekly-plan-page #workout-config,
+body.weekly-plan-page #chat-section,
+body.weekly-plan-page #weekly-plan-section {
+  display: none;
+}
+
+body:not(.suggestion-page) #suggestion-page-section,
+body:not(.suggestion-page) #results,
+body:not(.suggestion-page) #log-section {
+  display: none;
+}
+
+body:not(.weekly-plan-page) #weekly-plan-page-section {
+  display: none;
 }
 
 .account-heading {
@@ -312,6 +340,91 @@ button:active {
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 16px;
   align-items: end;
+}
+
+.chat-card {
+  margin-top: 24px;
+}
+
+.chat-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.chat-form .field-group {
+  min-width: 0;
+}
+
+.weekly-plan-card {
+  margin-top: 24px;
+}
+
+.weekly-plan-card h3 {
+  margin: 20px 0 10px;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.weekly-plan-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.weekly-plan-day-overrides {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.weekly-plan-day-override {
+  display: grid;
+  grid-template-columns: 80px repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+  align-items: center;
+}
+
+.weekly-plan-day-override label {
+  font-weight: 600;
+}
+
+.weekly-plan-day-override-header span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.weekly-plan-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+
+.weekly-plan-day {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f9fbff;
+}
+
+.weekly-plan-day h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.weekly-plan-rest {
+  background: var(--primary-soft);
+}
+
+.weekly-plan-empty {
+  color: var(--muted);
 }
 
 .big-text {

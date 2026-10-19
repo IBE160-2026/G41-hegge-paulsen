@@ -73,7 +73,19 @@
         </form>
       </section>
 
+      <section id="chat-section" class="card chat-card">
+        <h2>Spør SmartØkt og få øktforslag</h2>
+        <form id="chat-form" class="chat-form">
+          <div class="field-group">
+            <label for="chat-text">Beskriv økten med egne ord</label>
+            <input id="chat-text" name="chat-text" type="text" placeholder="F.eks. 30 min styrke, lite energi, hjemme med manualer, nybegynner" autocomplete="off" />
+          </div>
+          <button type="submit">Få øktforslag</button>
+        </form>
+      </section>
+
       <section id="workout-config" class="card">
+        <h2>Manuelle valg for øktforslag</h2>
         <form id="workout-form">
           <div class="field-group">
             <label for="time">Tilgjengelig tid</label>
@@ -134,7 +146,7 @@
         </form>
       </section>
 
-      <section id="results" class="result-grid">
+      <section id="suggestion-page-section" class="result-grid">
         <article class="card result-card">
           <h2>Øktforslag</h2>
           <p id="suggestion-title" class="big-text">Laster...</p>
@@ -143,7 +155,14 @@
           <p id="suggestion-intensity" class="meta"></p>
           <p id="suggestion-notes" class="notes"></p>
         </article>
+      </section>
 
+      <section id="weekly-plan-page-section" class="card weekly-plan-card">
+        <h2>Din ukeplan</h2>
+        <ul id="weekly-plan-list" class="weekly-plan-list"></ul>
+      </section>
+
+      <section id="results" class="result-grid">
         <article class="card result-card">
           <h2>Neste vekt</h2>
           <p id="next-weight" class="big-text">Laster...</p>
@@ -157,6 +176,7 @@
           <p class="meta">Siste fokus: <strong id="progress-focus">Ingen</strong></p>
           <p id="latest-workout" class="notes">Ingen økter logget enda.</p>
           <p id="progress-trend" class="notes">Logg minst to økter for å se utvikling.</p>
+          <p class="meta">Uke: <strong id="weekly-guideline-badge">Ikke godkjent uke</strong></p>
           <ul id="progress-list" class="exercise-list"></ul>
         </article>
       </section>
@@ -175,6 +195,7 @@
               <option value="styrke">Styrke</option>
               <option value="kondisjon">Kondisjon</option>
               <option value="generell">Generell helse</option>
+              <option value="balanse">Balanse</option>
             </select>
           </div>
 
@@ -189,6 +210,15 @@
           </div>
 
           <div class="field-group">
+            <label for="log-intensity">Intensitet</label>
+            <select id="log-intensity" name="log-intensity">
+              <option value="low">Lett</option>
+              <option value="medium" selected>Moderat</option>
+              <option value="high">Høy</option>
+            </select>
+          </div>
+
+          <div class="field-group">
             <label for="log-performance">Opplevelse</label>
             <select id="log-performance" name="log-performance">
               <option value="good">Bra</option>
@@ -198,6 +228,39 @@
           </div>
 
           <button type="submit">Legg til økt</button>
+        </form>
+      </section>
+
+      <section id="weekly-plan-section" class="card weekly-plan-card">
+        <h2>Ukeplan</h2>
+
+        <h3>Spør SmartØkt og få ukeplan</h3>
+        <form id="weekly-plan-chat-form" class="weekly-plan-form">
+          <div class="field-group">
+            <label for="weekly-plan-chat-text">Beskriv uken med egne ord</label>
+            <input id="weekly-plan-chat-text" name="weekly-plan-chat-text" type="text" placeholder="F.eks. tre økter denne uken, hjemme med manualer, nybegynner" autocomplete="off" />
+          </div>
+          <button type="submit">Få ukeplan basert på dine mål for kommende uke</button>
+        </form>
+
+        <h3>Manuelle valg for ukeplan</h3>
+        <form id="weekly-plan-form" class="weekly-plan-form">
+          <div class="field-group">
+            <label for="weekly-plan-days">Antall treningsdager denne uken</label>
+            <select id="weekly-plan-days" name="trainingDays">
+              <option value="1">1 dag</option>
+              <option value="2">2 dager</option>
+              <option value="3" selected>3 dager</option>
+              <option value="4">4 dager</option>
+              <option value="5">5 dager</option>
+              <option value="6">6 dager</option>
+              <option value="7">7 dager</option>
+            </select>
+          </div>
+
+          <div id="weekly-plan-day-overrides" class="weekly-plan-day-overrides"></div>
+
+          <button type="submit">Få ukeplan basert på dine mål for kommende uke</button>
         </form>
       </section>
     </main>

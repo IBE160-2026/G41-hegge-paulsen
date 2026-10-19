@@ -57,12 +57,25 @@ describe('Workout recommendation', () => {
       focus: 'styrke',
       duration: 35,
       load: 85,
-      performance: 'good'
+      performance: 'good',
+      intensity: 'high'
     });
 
     expect(result.length).toBe(3);
     expect(result[result.length - 1].focus).toBe('styrke');
     expect(result[result.length - 1].load).toBe(85);
+    expect(result[result.length - 1].intensity).toBe('high');
+  });
+
+  it('defaults a logged workout\'s intensity to null when omitted', () => {
+    const result = logWorkout([], {
+      focus: 'styrke',
+      duration: 35,
+      load: 85,
+      performance: 'good'
+    });
+
+    expect(result[result.length - 1].intensity).toBe(null);
   });
 
   it('summarizes recent progress from workout history', () => {
@@ -121,9 +134,13 @@ describe('Workout recommendation', () => {
   it('lists the main muscles engaged in each exercise', () => {
     const squat = exerciseData.find((exercise) => exercise.id === 'squat');
     const pushUp = exerciseData.find((exercise) => exercise.id === 'push-up');
+    const rowing = exerciseData.find((exercise) => exercise.id === 'rowing');
+    const cycling = exerciseData.find((exercise) => exercise.id === 'cycling');
 
     expect(squat.muscles).toContain('Ben');
     expect(pushUp.muscles).toContain('Bryst');
+    expect(rowing.muscles).toEqual(['Rygg', 'Armer', 'Skuldre']);
+    expect(cycling.muscles).toEqual(['Ben', 'Gluteus', 'Legger']);
   });
 
   it('prefers bodyweight strength moves for short and low-energy sessions', () => {
@@ -134,7 +151,23 @@ describe('Workout recommendation', () => {
       history: []
     });
 
-    expect(result.exercises.some((exercise) => exercise.toLowerCase().includes('armheving') || exercise.toLowerCase().includes('air squat'))).toBe(true);
+    expect(result.exercises.some((exercise) => exercise.toLowerCase().includes('armheving') || exercise.toLowerCase().includes('mini-knebøy'))).toBe(true);
+  });
+
+  it('picks the gentler bodyweight variant over its harder sibling for the same movement pattern when time is short or energy is low', () => {
+    const squatResult = getWorkoutSuggestion({
+      time: 15,
+      focus: 'styrke',
+      energy: 'low',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'intermediate'
+    });
+
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'air-squat')).toBe(true);
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'squat')).toBe(false);
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'step-up')).toBe(true);
+    expect(squatResult.exerciseDetails.some((exercise) => exercise.id === 'lunges')).toBe(false);
   });
 
   it('explains why the recommendation fits the current session', () => {
@@ -309,5 +342,81 @@ describe('Workout recommendation', () => {
 
     expect(readStoredHistory('smartokt-history:user-1', storage)).toEqual(firstUserHistory);
     expect(readStoredHistory('smartokt-history:user-2', storage)).toEqual(secondUserHistory);
+  });
+
+  it('behaves exactly as before when no excludeExerciseIds argument is passed (regression guard)', () => {
+    const withoutParam = getWorkoutSuggestion({
+      time: 60,
+      focus: 'styrke',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'intermediate'
+    });
+
+    const withEmptyExclusion = getWorkoutSuggestion({
+      time: 60,
+      focus: 'styrke',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'intermediate',
+      excludeExerciseIds: []
+    });
+
+    expect(withEmptyExclusion.exerciseDetails.map((exercise) => exercise.id))
+      .toEqual(withoutParam.exerciseDetails.map((exercise) => exercise.id));
+  });
+
+  it('prefers an unexcluded candidate over a repeat when an unused alternative exists', () => {
+    // home-dumbbell + advanced level has 3 kondisjon candidates (burpee,
+    // mountain-climbers, march-in-place) but this session only needs 1 --
+    // plenty of unused alternatives, so excluding the baseline pick must not
+    // fall back to reusing it.
+    const baseline = getWorkoutSuggestion({
+      time: 30,
+      focus: 'kondisjon',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-dumbbell',
+      level: 'advanced'
+    });
+    const baselineIds = baseline.exerciseDetails.map((exercise) => exercise.id);
+
+    const withExclusion = getWorkoutSuggestion({
+      time: 30,
+      focus: 'kondisjon',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-dumbbell',
+      level: 'advanced',
+      excludeExerciseIds: baselineIds
+    });
+
+    expect(withExclusion.exerciseDetails.length).toBe(baselineIds.length);
+    expect(withExclusion.exerciseDetails.some((exercise) => baselineIds.includes(exercise.id))).toBe(false);
+  });
+
+  it('falls back to a previously excluded candidate for a slot once that slot\'s unused options run out, without shrinking the result', () => {
+    // home-bodyweight has exactly 7 styrke-compatible exercises across 4
+    // movement patterns (squat, horizontal-push, single-leg, core). Excluding
+    // every exercise exhausts the pool entirely, so every slot must fall back
+    // to reuse -- and the result must still be full-length (4 exercises).
+    const allHomeBodyweightStyrkeIds = [
+      'squat', 'push-up', 'air-squat', 'lunges', 'wall-push-up', 'step-up', 'plank'
+    ];
+
+    const result = getWorkoutSuggestion({
+      time: 30,
+      focus: 'styrke',
+      energy: 'medium',
+      history: [],
+      trainingMode: 'home-bodyweight',
+      level: 'intermediate',
+      excludeExerciseIds: allHomeBodyweightStyrkeIds
+    });
+
+    expect(result.exerciseDetails.length).toBe(4);
+    expect(result.exerciseDetails.every((exercise) => allHomeBodyweightStyrkeIds.includes(exercise.id))).toBe(true);
   });
 });
