@@ -32,15 +32,18 @@ import {
 } from '../features/weeklyPlan.js';
 import { userHistory } from '../data/sampleHistory.js';
 
-const accountPage = new URLSearchParams(window.location.search).get('view') === 'account';
-const suggestionPage = new URLSearchParams(window.location.search).get('view') === 'forslag';
+const viewParam = new URLSearchParams(window.location.search).get('view');
+const accountPage = viewParam === 'account';
+const suggestionPage = viewParam === 'forslag';
+const weeklyPlanPage = viewParam === 'ukeplan';
 const pageTitle = document.getElementById('page-title');
 const accountNavigation = document.getElementById('account-navigation');
 
 document.body.classList.toggle('account-page', accountPage);
 document.body.classList.toggle('suggestion-page', suggestionPage);
-if (accountPage || suggestionPage) {
-  pageTitle.textContent = accountPage ? 'Konto' : 'Øktforslag';
+document.body.classList.toggle('weekly-plan-page', weeklyPlanPage);
+if (accountPage || suggestionPage || weeklyPlanPage) {
+  pageTitle.textContent = accountPage ? 'Konto' : weeklyPlanPage ? 'Ukeplan' : 'Øktforslag';
   accountNavigation.href = '/';
   accountNavigation.textContent = 'Tilbake til økt';
 }
@@ -738,7 +741,7 @@ function generateWeeklyPlan() {
   });
 
   writeStoredWeeklyPlan(weeklyPlan, weeklyPlanStorageKey);
-  window.location.href = '?view=forslag';
+  window.location.href = '?view=ukeplan';
 }
 
 weeklyPlanForm.addEventListener('submit', (event) => {
@@ -762,7 +765,7 @@ weeklyPlanChatForm.addEventListener('submit', (event) => {
   });
 
   writeStoredWeeklyPlan(weeklyPlan, weeklyPlanStorageKey);
-  window.location.href = '?view=forslag';
+  window.location.href = '?view=ukeplan';
 });
 
 document.getElementById('log-date').value = todayLocalDateString();

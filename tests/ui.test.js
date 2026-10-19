@@ -165,7 +165,7 @@ describe('ui.js weekly plan wiring', () => {
     expect(new Set(persisted.days.map((day) => day.isoWeekday)).size).toBe(4);
   });
 
-  it('renders the persisted plan on the suggestion page (?view=forslag), not inline on the landing page', async () => {
+  it('renders the persisted plan on its own weekly-plan page (?view=ukeplan), not the single-session suggestion page', async () => {
     await renderApp();
 
     document.getElementById('weekly-plan-days').value = '2';
@@ -173,11 +173,32 @@ describe('ui.js weekly plan wiring', () => {
       new Event('submit', { bubbles: true, cancelable: true })
     );
 
-    window.history.pushState({}, '', '/?view=forslag');
+    window.history.pushState({}, '', '/?view=ukeplan');
     await renderApp();
 
+    expect(document.body.classList.contains('weekly-plan-page')).toBe(true);
+    expect(document.body.classList.contains('suggestion-page')).toBe(false);
     const trainingDayItems = document.querySelectorAll('#weekly-plan-list li.weekly-plan-day:not(.weekly-plan-rest)');
     expect(trainingDayItems.length).toBe(2);
+  });
+
+  it('navigates to ?view=ukeplan on submit, not ?view=forslag (the single-session suggestion page)', async () => {
+    const realLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { href: '', search: realLocation.search },
+      writable: true,
+      configurable: true
+    });
+
+    await renderApp();
+
+    document.getElementById('weekly-plan-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+
+    expect(window.location.href).toBe('?view=ukeplan');
+
+    Object.defineProperty(window, 'location', { value: realLocation, writable: true, configurable: true });
   });
 
   it('overwrites the stored plan when the day count is changed and regenerated', async () => {
@@ -229,6 +250,26 @@ describe('ui.js weekly plan wiring', () => {
     const plan = JSON.parse(localStorage.getItem(WEEKLY_PLAN_STORAGE_KEY));
     expect(plan.days.length).toBe(3);
     expect(plan.days.every((day) => day.suggestion.availableEquipment.includes('dumbbell'))).toBe(true);
+  });
+
+  it('navigates to ?view=ukeplan when #weekly-plan-chat-form is submitted, not ?view=forslag', async () => {
+    const realLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      value: { href: '', search: realLocation.search },
+      writable: true,
+      configurable: true
+    });
+
+    await renderApp();
+
+    document.getElementById('weekly-plan-chat-text').value = 'tre økter denne uken';
+    document.getElementById('weekly-plan-chat-form').dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true })
+    );
+
+    expect(window.location.href).toBe('?view=ukeplan');
+
+    Object.defineProperty(window, 'location', { value: realLocation, writable: true, configurable: true });
   });
 
   it('never reads or writes the menu form\'s equipment/profile fields when the weekly-plan chat form is submitted', async () => {
@@ -556,6 +597,16 @@ describe('ui.js chat input and suggestion-page wiring', () => {
     window.history.pushState({}, '', '/?view=forslag');
     await renderApp();
 
+    const nav = document.getElementById('account-navigation');
+    expect(nav.textContent).toBe('Tilbake til økt');
+    expect(nav.getAttribute('href')).toBe('/');
+  });
+
+  it('shows "Ukeplan" as the page title and "Tilbake til økt" on the weekly-plan page', async () => {
+    window.history.pushState({}, '', '/?view=ukeplan');
+    await renderApp();
+
+    expect(document.getElementById('page-title').textContent).toBe('Ukeplan');
     const nav = document.getElementById('account-navigation');
     expect(nav.textContent).toBe('Tilbake til økt');
     expect(nav.getAttribute('href')).toBe('/');

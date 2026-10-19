@@ -180,10 +180,20 @@ body.suggestion-page #weekly-plan-section {
   display: none;
 }
 
+body.weekly-plan-page #account-panel,
+body.weekly-plan-page #workout-config,
+body.weekly-plan-page #chat-section,
+body.weekly-plan-page #weekly-plan-section {
+  display: none;
+}
+
 body:not(.suggestion-page) #suggestion-page-section,
 body:not(.suggestion-page) #results,
-body:not(.suggestion-page) #log-section,
-body:not(.suggestion-page) #weekly-plan-page-section {
+body:not(.suggestion-page) #log-section {
+  display: none;
+}
+
+body:not(.weekly-plan-page) #weekly-plan-page-section {
   display: none;
 }
 
