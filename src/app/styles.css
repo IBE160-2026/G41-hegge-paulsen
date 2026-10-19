@@ -174,14 +174,14 @@ body.account-page .account-card {
 
 body.suggestion-page #account-panel,
 body.suggestion-page #workout-config,
-body.suggestion-page #chat-section {
+body.suggestion-page #chat-section,
+body.suggestion-page #weekly-plan-section {
   display: none;
 }
 
 body:not(.suggestion-page) #suggestion-page-section,
 body:not(.suggestion-page) #results,
-body:not(.suggestion-page) #log-section,
-body:not(.suggestion-page) #weekly-plan-section {
+body:not(.suggestion-page) #log-section {
   display: none;
 }
 

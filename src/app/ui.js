@@ -482,7 +482,7 @@ const focusLabels = {
 
 function renderWeeklyPlan(plan) {
   if (!plan || !plan.days || !plan.days.length) {
-    weeklyPlanList.innerHTML = '<li class="weekly-plan-empty">Ingen ukeplan generert enda. Velg antall treningsdager og trykk «Generer ukeplan».</li>';
+    weeklyPlanList.innerHTML = '<li class="weekly-plan-empty">Ingen ukeplan generert enda. Velg antall treningsdager og trykk «Få ukeplan basert på dine mål for kommende uke».</li>';
     return;
   }
 
